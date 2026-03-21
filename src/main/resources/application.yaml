@@ -1,0 +1,3 @@
+spring:
+  application:
+    name: Proyecto_Springboot_Base
