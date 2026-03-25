@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuCanvas | Inteligencia sobre tus Documentos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .gradient-text { background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body x-data="docApp()" class="min-h-screen">
+
+    <!-- Header -->
+    <header class="p-6 border-b border-white/5 glass sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold gradient-text">DocuCanvas</h1>
+            <div class="flex gap-4">
+                <button @click="view = 'upload'" :class="view === 'upload' ? 'text-sky-400' : 'text-slate-400'" class="font-medium">Subir</button>
+                <button @click="view = 'ask'" :class="view === 'ask' ? 'text-sky-400' : 'text-slate-400'" class="font-medium">Preguntar</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto p-6 mt-8">
+        
+        <!-- Vista: Upload -->
+        <div x-show="view === 'upload'" x-transition x-cloak>
+            <div class="glass p-8 rounded-2xl shadow-2xl">
+                <h2 class="text-3xl font-bold mb-6">Alimentar el Cerebro</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Text Ingestion -->
+                    <div class="space-y-4">
+                        <h3 class="text-xl font-semibold text-sky-400">Texto Directo</h3>
+                        <input x-model="textIngest.title" type="text" placeholder="Título del texto..." class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-500">
+                        <textarea x-model="textIngest.content" rows="6" placeholder="Pega el contenido aquí..." class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-500"></textarea>
+                        <button @click="ingestText()" :disabled="loading" class="w-full bg-sky-600 hover:bg-sky-500 py-3 rounded-lg font-bold transition disabled:opacity-50">
+                            <span x-show="!loading">Empezar Indexación</span>
+                            <span x-show="loading">Procesando...</span>
+                        </button>
+                    </div>
+                    <!-- File Ingestion (Visual Mock for now) -->
+                    <div class="border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 transition cursor-pointer">
+                        <svg class="w-12 h-12 text-slate-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <p class="text-slate-400">Subir PDF, DOCX o TXT</p>
+                        <span class="text-xs text-slate-500 mt-2">(Próxima Versión)</span>
+                    </div>
+                </div>
+
+                <!-- Recent Documents -->
+                <div class="mt-12">
+                    <h3 class="text-xl font-semibold mb-4">Documentos Indexados</h3>
+                    <div class="grid gap-4">
+                        <template x-for="doc in documents" :key="doc.id">
+                            <div class="glass p-4 rounded-xl flex justify-between items-center border-l-4 border-emerald-500">
+                                <div>
+                                    <p class="font-bold text-slate-200" x-text="doc.title"></p>
+                                    <p class="text-xs text-slate-500" x-text="doc.sourceType"></p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full font-bold" x-text="doc.status"></span>
+                                    <p class="text-xs text-slate-500 mt-1" x-text="'ID: ' + doc.id.substring(0,8)"></p>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="documents.length === 0" class="text-slate-500 italic py-4">No hay documentos para procesar.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista: Ask -->
+        <div x-show="view === 'ask'" x-transition x-cloak>
+            <div class="flex flex-col h-[70vh] glass rounded-2xl overflow-hidden shadow-2xl">
+                <!-- Chat Area -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-900/50" id="chatbox">
+                    <template x-for="msg in chatHistory">
+                        <div :class="msg.role === 'user' ? 'justify-end' : 'justify-start'" class="flex">
+                            <div :class="msg.role === 'user' ? 'bg-sky-600 rounded-tr-none' : 'glass rounded-tl-none'" class="max-w-[80%] p-4 rounded-2xl shadow-lg">
+                                <p class="text-sm" x-text="msg.content"></p>
+                                <template x-if="msg.sources && msg.sources.length > 0">
+                                    <div class="mt-3 pt-2 border-t border-white/10">
+                                        <p class="text-[10px] uppercase font-bold text-slate-400">Fuentes:</p>
+                                        <div class="flex gap-2 mt-1">
+                                            <template x-for="src in msg.sources">
+                                                <span class="text-[10px] bg-white/10 px-1 rounded" x-text="src.substring(0,8)"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="loading" class="flex justify-start">
+                        <div class="glass p-4 rounded-2xl animate-pulse">Pensando...</div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="p-4 border-t border-white/5 glass">
+                    <div class="flex gap-2">
+                        <input x-model="question" @keyup.enter="askQuestion()" type="text" placeholder="Haz una pregunta sobre tus documentos..." class="flex-1 bg-slate-800 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 focus:ring-sky-500">
+                        <button @click="askQuestion()" :disabled="loading" class="bg-sky-600 p-4 rounded-xl hover:bg-sky-500 transition disabled:opacity-50">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function docApp() {
+            return {
+                view: 'upload',
+                loading: false,
+                question: '',
+                textIngest: { title: '', content: '' },
+                documents: [],
+                chatHistory: [
+                    { role: 'ai', content: '¡Hola! Sube un documento y pregúntame lo que necesites.' }
+                ],
+
+                init() {
+                    this.loadDocuments();
+                },
+
+                async loadDocuments() {
+                    try {
+                        const res = await fetch('/api/v1/documents');
+                        if (res.ok) this.documents = await res.json();
+                    } catch (e) { console.error('Error loading docs', e); }
+                },
+
+                async ingestText() {
+                    if (!this.textIngest.title || !this.textIngest.content) return;
+                    this.loading = true;
+                    try {
+                        const res = await fetch('/api/v1/documents/import-text', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: this.textIngest.title,
+                                content: this.textIngest.content,
+                                sourceType: 'TEXT'
+                            })
+                        });
+                        if (res.ok) {
+                            alert('Indexación iniciada.');
+                            this.textIngest = { title: '', content: '' };
+                            await this.loadDocuments();
+                        }
+                    } catch (e) { alert('Error en ingesta'); }
+                    finally { this.loading = false; }
+                },
+
+                async askQuestion() {
+                    if (!this.question) return;
+                    const q = this.question;
+                    this.chatHistory.push({ role: 'user', content: q });
+                    this.question = '';
+                    this.loading = true;
+                    
+                    try {
+                        const res = await fetch('/api/v1/questions/ask', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ question: q, maxChunks: 5 })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.chatHistory.push({ role: 'ai', content: data.answer, sources: data.sources });
+                        } else {
+                            this.chatHistory.push({ role: 'ai', content: 'Lo siento, hubo un problema al procesar tu pregunta.' });
+                        }
+                    } catch (e) {
+                        this.chatHistory.push({ role: 'ai', content: 'Error de conexión con la IA.' });
+                    } finally {
+                        this.loading = false;
+                        this.$nextTick(() => {
+                            const chat = document.getElementById('chatbox');
+                            chat.scrollTop = chat.scrollHeight;
+                        });
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

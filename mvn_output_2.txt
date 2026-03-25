@@ -1,0 +1,41 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.docucanvas:docu-canvas >---------------------
+[INFO] Building DocuCanvas 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ docu-canvas ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ docu-canvas ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 26 source files with javac [debug parameters release 21] to target\classes
+[WARNING] /C:/intelijent/Proyecto_Base_SpringBoot/src/main/java/com/docucanvas/infrastructure/ai/GeminiRestClient.java:[37,70] unchecked conversion
+  required: java.util.Map<java.lang.String,java.lang.Object>
+  found:    java.util.Map
+[WARNING] /C:/intelijent/Proyecto_Base_SpringBoot/src/main/java/com/docucanvas/infrastructure/ai/GeminiRestClient.java:[39,96] unchecked cast
+  required: java.util.List<java.util.Map<java.lang.String,java.lang.Object>>
+  found:    java.lang.Object
+[WARNING] /C:/intelijent/Proyecto_Base_SpringBoot/src/main/java/com/docucanvas/infrastructure/ai/GeminiRestClient.java:[41,87] unchecked cast
+  required: java.util.Map<java.lang.String,java.lang.Object>
+  found:    java.lang.Object
+[WARNING] /C:/intelijent/Proyecto_Base_SpringBoot/src/main/java/com/docucanvas/infrastructure/ai/GeminiRestClient.java:[42,90] unchecked cast
+  required: java.util.List<java.util.Map<java.lang.String,java.lang.Object>>
+  found:    java.lang.Object
+[WARNING] /C:/intelijent/Proyecto_Base_SpringBoot/src/main/java/com/docucanvas/infrastructure/ai/GeminiRestClient.java:[61,70] unchecked conversion
+  required: java.util.Map<java.lang.String,java.lang.Object>
+  found:    java.util.Map
+[WARNING] /C:/intelijent/Proyecto_Base_SpringBoot/src/main/java/com/docucanvas/infrastructure/ai/GeminiRestClient.java:[63,83] unchecked cast
+  required: java.util.Map<java.lang.String,java.lang.Object>
+  found:    java.lang.Object
+[WARNING] /C:/intelijent/Proyecto_Base_SpringBoot/src/main/java/com/docucanvas/infrastructure/ai/GeminiRestClient.java:[64,67] unchecked cast
+  required: java.util.List<java.lang.Double>
+  found:    java.lang.Object
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.406 s
+[INFO] Finished at: 2026-03-25T14:28:08-05:00
+[INFO] ------------------------------------------------------------------------
