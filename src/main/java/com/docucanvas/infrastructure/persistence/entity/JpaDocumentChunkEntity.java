@@ -33,6 +33,9 @@ public class JpaDocumentChunkEntity {
     @Column(name = "metadata")
     private String metadata; // Should be JSON but string is safer for simple mapping
 
+    @Column(name = "chunk_index", nullable = false)
+    private int chunkIndex;
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 

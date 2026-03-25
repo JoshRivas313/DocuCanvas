@@ -19,5 +19,6 @@ CREATE TABLE IF NOT EXISTS document_chunks (
     content TEXT NOT NULL,
     embedding VECTOR(1536), -- 1536 is standard for many models like Gemini/OpenAI
     metadata JSONB,
+    chunk_index INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

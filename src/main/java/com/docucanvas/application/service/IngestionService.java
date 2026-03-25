@@ -52,11 +52,14 @@ public class IngestionService {
 
             // 4. Save Chunks
             List<DocumentChunk> domainChunks = IntStream.range(0, textChunks.size())
-                    .mapToObj(i -> DocumentChunk.builder()
-                            .documentId(documentId)
-                            .content(textChunks.get(i))
-                            .embedding(embeddings.get(i))
-                            .build())
+                    .mapToObj(i -> new DocumentChunk(
+                            UUID.randomUUID(),
+                            documentId,
+                            textChunks.get(i),
+                            embeddings.get(i),
+                            i,
+                            java.time.Instant.now()
+                    ))
                     .toList();
 
             documentRepository.saveChunks(domainChunks);

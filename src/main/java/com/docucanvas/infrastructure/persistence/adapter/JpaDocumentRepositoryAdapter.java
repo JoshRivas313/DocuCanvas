@@ -97,23 +97,23 @@ public class JpaDocumentRepositoryAdapter implements DocumentRepository {
 
     private JpaDocumentChunkEntity toChunkEntity(DocumentChunk c) {
         return JpaDocumentChunkEntity.builder()
-                .id(c.getId())
-                .documentId(c.getDocumentId())
-                .content(c.getContent())
-                .embedding(c.getEmbedding())
-                .metadata(c.getMetadata())
-                .createdAt(c.getCreatedAt())
+                .id(c.id())
+                .documentId(c.documentId())
+                .content(c.content())
+                .embedding(c.embedding())
+                .chunkIndex(c.chunkIndex())
+                .createdAt(c.createdAt())
                 .build();
     }
 
     private DocumentChunk toChunkDomain(JpaDocumentChunkEntity e) {
-        return DocumentChunk.builder()
-                .id(e.getId())
-                .documentId(e.getDocumentId())
-                .content(e.getContent())
-                .embedding(e.getEmbedding())
-                .metadata(e.getMetadata())
-                .createdAt(e.getCreatedAt())
-                .build();
+        return new DocumentChunk(
+                e.getId(),
+                e.getDocumentId(),
+                e.getContent(),
+                e.getEmbedding(),
+                e.getChunkIndex(),
+                e.getCreatedAt()
+        );
     }
 }
