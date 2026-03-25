@@ -1,5 +1,35 @@
-# DocuCanvas: RAG-Powered Document Analysis Platform
+# DocuCanvas 🎨 (Visual RAG Edition)
 
+![Spring AI](https://img.shields.io/badge/Spring%20AI-1.0.0--SNAPSHOT-green)
+![RAG](https://img.shields.io/badge/Architecture-RAG-blue)
+![ImageModel](https://img.shields.io/badge/AI-ImageModel-magenta)
+![License](https://img.shields.io/badge/License-MIT-gray)
+
+> **"No leas la documentación, haz que Spring AI te la dibuje"**
+
+DocuCanvas es una plataforma de consulta inteligente sobre documentos que utiliza la potencia de **Spring AI** para no solo responder preguntas basadas en contexto real (RAG), sino también para **generar una representación visual** de ese conocimiento de forma dinámica.
+
+---
+
+## 🎨 Visual RAG: El Pilar de la Charla
+
+A diferencia de los chats tradicionales con PDFs, DocuCanvas implementa un pipeline multimodal completo:
+
+1.  **Ingesta**: Extracción con Tika y Chunking inteligente.
+2.  **Recuperación**: Búsqueda semántica en PGVector.
+3.  **Generación de Texto**: Respuesta fundamentada (Grounded) para evitar alucinaciones.
+4.  **Generación Visual**: Uso de `ImageModel` para transformar el conocimiento recuperado en una imagen descriptiva.
+
+### 🎥 Demo E2E (Script)
+
+Puedes ejecutar la demo completa usando el script de PowerShell incluido:
+```powershell
+./demo_e2e.ps1
+```
+
+---
+
+## 🚀 Instalación y Uso
 DocuCanvas es una plataforma avanzada de Análisis de Documentos con Generación Aumentada por Recuperación (RAG).
 
 ## 📂 Estructura de Carpetas
