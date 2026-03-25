@@ -12,11 +12,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "documents")
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class JpaDocumentEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -45,6 +40,41 @@ public class JpaDocumentEntity {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    public JpaDocumentEntity() {}
+
+    public JpaDocumentEntity(UUID id, String title, String sourceType, DocumentStatus status, Integer chunkCount, List<String> tags, Instant createdAt, Instant updatedAt) {
+        this.id = id;
+        this.title = title;
+        this.sourceType = sourceType;
+        this.status = status;
+        this.chunkCount = chunkCount;
+        this.tags = tags;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public static JpaDocumentEntityBuilder builder() {
+        return new JpaDocumentEntityBuilder();
+    }
+
+    // Getters and Setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getSourceType() { return sourceType; }
+    public void setSourceType(String sourceType) { this.sourceType = sourceType; }
+    public DocumentStatus getStatus() { return status; }
+    public void setStatus(DocumentStatus status) { this.status = status; }
+    public Integer getChunkCount() { return chunkCount; }
+    public void setChunkCount(Integer chunkCount) { this.chunkCount = chunkCount; }
+    public List<String> getTags() { return tags; }
+    public void setTags(List<String> tags) { this.tags = tags; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
@@ -56,4 +86,29 @@ public class JpaDocumentEntity {
     protected void onUpdate() {
         updatedAt = Instant.now();
     }
+
+    public static class JpaDocumentEntityBuilder {
+        private UUID id;
+        private String title;
+        private String sourceType;
+        private DocumentStatus status;
+        private Integer chunkCount;
+        private List<String> tags;
+        private Instant createdAt;
+        private Instant updatedAt;
+
+        public JpaDocumentEntityBuilder id(UUID id) { this.id = id; return this; }
+        public JpaDocumentEntityBuilder title(String title) { this.title = title; return this; }
+        public JpaDocumentEntityBuilder sourceType(String sourceType) { this.sourceType = sourceType; return this; }
+        public JpaDocumentEntityBuilder status(DocumentStatus status) { this.status = status; return this; }
+        public JpaDocumentEntityBuilder chunkCount(Integer chunkCount) { this.chunkCount = chunkCount; return this; }
+        public JpaDocumentEntityBuilder tags(List<String> tags) { this.tags = tags; return this; }
+        public JpaDocumentEntityBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
+        public JpaDocumentEntityBuilder updatedAt(Instant updatedAt) { this.updatedAt = updatedAt; return this; }
+
+        public JpaDocumentEntity build() {
+            return new JpaDocumentEntity(id, title, sourceType, status, chunkCount, tags, createdAt, updatedAt);
+        }
+    }
 }
+
