@@ -83,6 +83,11 @@
                         <div :class="msg.role === 'user' ? 'justify-end' : 'justify-start'" class="flex">
                             <div :class="msg.role === 'user' ? 'bg-sky-600 rounded-tr-none' : 'glass rounded-tl-none'" class="max-w-[80%] p-4 rounded-2xl shadow-lg">
                                 <p class="text-sm" x-text="msg.content"></p>
+                                <template x-if="msg.imageUrl">
+                                    <div class="mt-4">
+                                        <img :src="msg.imageUrl" class="rounded-xl shadow-2xl max-w-full mx-auto border border-white/10">
+                                    </div>
+                                </template>
                                 <template x-if="msg.sources && msg.sources.length > 0">
                                     <div class="mt-3 pt-2 border-t border-white/10">
                                         <p class="text-[10px] uppercase font-bold text-slate-400">Fuentes:</p>
