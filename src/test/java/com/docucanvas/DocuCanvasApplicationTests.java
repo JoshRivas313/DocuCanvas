@@ -1,10 +1,10 @@
-package com.example.Proyecto_Springboot_Base;
+package com.docucanvas;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class ProyectoSpringbootBaseApplicationTests {
+class DocuCanvasApplicationTests {
 
 	@Test
 	void contextLoads() {
