@@ -13,8 +13,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/index.html", "/static/**", "/css/**", "/js/**", "/api/v1/**", "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**").permitAll()
-                .anyRequest().authenticated()
+                .anyRequest().permitAll()
             )
             .formLogin(login -> login.permitAll())
             .httpBasic(basic -> {});
