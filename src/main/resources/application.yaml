@@ -1,3 +1,42 @@
 spring:
   application:
     name: docu-canvas
+  ai:
+    vertex:
+      ai:
+        gemini:
+          api-key: AIzaSyDEOAxuHEe7ORRD460pEJSN3UdAOY1T8LY
+          chat:
+            options:
+              model: gemini-2.0-flash
+          embedding:
+            options:
+              model: text-embedding-004
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/docucanvas
+    username: user
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+logging:
+  level:
+    org.springframework.ai: DEBUG
+    com.docucanvas: DEBUG
