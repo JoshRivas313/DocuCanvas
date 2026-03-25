@@ -15,7 +15,7 @@ public class QuestionController {
 
     private final QuestionService questionService;
 
-    @PostMapping
+    @PostMapping("/ask")
     public ResponseEntity<QuestionResponse> ask(
             @Valid @RequestBody QuestionRequest request) {
         return ResponseEntity.ok(questionService.answer(request));

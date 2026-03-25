@@ -8,21 +8,34 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class UploadDocumentUseCase {
 
     private final DocumentRepository documentRepository;
     private final IngestionService ingestionService;
 
+    public UploadDocumentUseCase(DocumentRepository documentRepository, 
+                                 IngestionService ingestionService) {
+        this.documentRepository = documentRepository;
+        this.ingestionService = ingestionService;
+    }
+
     public Document execute(MultipartFile file, String title) {
-        Document document = Document.builder()
-                .title(title != null ? title : file.getOriginalFilename())
-                .sourceType(getFileExtension(file.getOriginalFilename()))
-                .status(DocumentStatus.PENDING)
-                .build();
+        String sourceType = getFileExtension(file.getOriginalFilename());
+        Document document = new Document(
+                UUID.randomUUID(),
+                title != null ? title : file.getOriginalFilename(),
+                sourceType,
+                DocumentStatus.PENDING,
+                0,
+                List.of(),
+                Instant.now(),
+                Instant.now()
+        );
 
         Document saved = documentRepository.save(document);
         

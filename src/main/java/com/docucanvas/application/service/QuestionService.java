@@ -7,16 +7,14 @@ import com.docucanvas.domain.repository.ChunkRepository;
 import com.docucanvas.infrastructure.ai.GeminiEmbeddingAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
+import com.docucanvas.infrastructure.ai.GeminiRestClient;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class QuestionService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(QuestionService.class);
     private static final String RAG_PROMPT_TEMPLATE = """
             Eres un asistente experto en análisis de documentos.
             Responde a la pregunta del usuario usando ÚNICAMENTE la información del contexto proporcionado.
@@ -34,7 +32,15 @@ public class QuestionService {
 
     private final ChunkRepository chunkRepository;
     private final GeminiEmbeddingAdapter embeddingAdapter;
-    private final ChatClient chatClient;
+    private final GeminiRestClient geminiRestClient;
+
+    public QuestionService(ChunkRepository chunkRepository,
+                           GeminiEmbeddingAdapter embeddingAdapter,
+                           GeminiRestClient geminiRestClient) {
+        this.chunkRepository = chunkRepository;
+        this.embeddingAdapter = embeddingAdapter;
+        this.geminiRestClient = geminiRestClient;
+    }
 
     public QuestionResponse answer(QuestionRequest request) {
         log.info("Procesando pregunta: {}", request.question());
@@ -64,10 +70,7 @@ public class QuestionService {
 
         // 4. Llamar al LLM con RAG prompt
         String prompt = RAG_PROMPT_TEMPLATE.formatted(context, request.question());
-        String answer = chatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
+        String answer = geminiRestClient.generate(prompt);
 
         // 5. Extraer fuentes únicas (por documentId)
         List<String> sources = relevantChunks.stream()

@@ -2,20 +2,20 @@ spring:
   application:
     name: docu-canvas
   ai:
-    vertex:
+    google:
       ai:
         gemini:
           api-key: AIzaSyDEOAxuHEe7ORRD460pEJSN3UdAOY1T8LY
           chat:
             options:
-              model: gemini-2.0-flash
+              model: gemini-1.5-flash
           embedding:
             options:
               model: text-embedding-004
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/docucanvas
-    username: user
+    url: jdbc:postgresql://localhost:5433/docucanvas
+    username: postgres
     password: password
     driver-class-name: org.postgresql.Driver
 

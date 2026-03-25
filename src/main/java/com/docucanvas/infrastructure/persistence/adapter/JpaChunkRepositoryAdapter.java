@@ -12,12 +12,15 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 
-@Slf4j
 @Repository
-@RequiredArgsConstructor
 public class JpaChunkRepositoryAdapter implements ChunkRepository {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JpaChunkRepositoryAdapter.class);
     private final JdbcTemplate jdbcTemplate;
+
+    public JpaChunkRepositoryAdapter(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     @Override
     public List<DocumentChunk> findSimilar(float[] embeddingVector, int topK) {

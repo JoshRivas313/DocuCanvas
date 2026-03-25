@@ -17,15 +17,24 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class IngestionService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(IngestionService.class);
     private final DocumentRepository documentRepository;
     private final TikaExtractor tikaExtractor;
     private final SimpleChunker chunker;
     private final GeminiEmbeddingAdapter embeddingAdapter;
+
+    public IngestionService(DocumentRepository documentRepository,
+                            TikaExtractor tikaExtractor,
+                            SimpleChunker chunker,
+                            GeminiEmbeddingAdapter embeddingAdapter) {
+        this.documentRepository = documentRepository;
+        this.tikaExtractor = tikaExtractor;
+        this.chunker = chunker;
+        this.embeddingAdapter = embeddingAdapter;
+    }
 
     @Async
     public void processIngestion(UUID documentId, MultipartFile file) {

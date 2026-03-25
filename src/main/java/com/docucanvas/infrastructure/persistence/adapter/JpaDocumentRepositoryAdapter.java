@@ -17,11 +17,16 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
 public class JpaDocumentRepositoryAdapter implements DocumentRepository {
 
     private final JpaDocumentRepository documentRepository;
     private final JpaDocumentChunkRepository chunkRepository;
+
+    public JpaDocumentRepositoryAdapter(JpaDocumentRepository documentRepository,
+                                        JpaDocumentChunkRepository chunkRepository) {
+        this.documentRepository = documentRepository;
+        this.chunkRepository = chunkRepository;
+    }
 
     @Override
     public Document save(Document document) {

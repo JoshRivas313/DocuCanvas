@@ -1,6 +1,6 @@
 -- V1__Initial_Schema.sql
 -- Extension pgvector is handled via docker-compose or manual setup
--- CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
