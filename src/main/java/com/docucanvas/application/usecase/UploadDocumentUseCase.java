@@ -25,25 +25,31 @@ public class UploadDocumentUseCase {
     }
 
     public Document execute(MultipartFile file, String title) {
-        String sourceType = getFileExtension(file.getOriginalFilename());
-        Document document = new Document(
-                UUID.randomUUID(),
-                title != null ? title : file.getOriginalFilename(),
-                sourceType,
-                DocumentStatus.PENDING,
-                0,
-                List.of(),
-                Instant.now(),
-                Instant.now()
-        );
+        try {
+            String sourceType = getFileExtension(file.getOriginalFilename());
+            Document document = new Document(
+                    UUID.randomUUID(),
+                    title != null ? title : file.getOriginalFilename(),
+                    sourceType,
+                    DocumentStatus.PENDING,
+                    0,
+                    List.of(),
+                    Instant.now(),
+                    Instant.now()
+            );
 
-        Document saved = documentRepository.save(document);
-        
-        // Trigger async processing
-        ingestionService.processIngestion(saved.getId(), file);
+            Document saved = documentRepository.save(document);
+            
+            // Trigger async processing
+            byte[] bytes = file.getBytes();
+            ingestionService.processIngestion(saved.getId(), bytes, file.getOriginalFilename());
 
-        return saved;
+            return saved;
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Could not read file", e);
+        }
     }
+
 
     private String getFileExtension(String filename) {
         if (filename == null || !filename.contains(".")) return "UNKNOWN";

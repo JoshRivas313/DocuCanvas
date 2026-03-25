@@ -54,11 +54,7 @@ public class DocumentController {
         );
         Document saved = documentRepository.save(doc);
         
-        // Custom lightweight MultipartFile for text ingestion
-        MultipartFile textFile = new SimpleMultipartFile(
-                "text.txt", "text/plain", request.content().getBytes());
-        
-        ingestionService.processIngestion(saved.getId(), textFile);
+        ingestionService.processIngestion(saved.getId(), request.content().getBytes(), "text.txt");
         
         return ResponseEntity.ok(saved);
     }

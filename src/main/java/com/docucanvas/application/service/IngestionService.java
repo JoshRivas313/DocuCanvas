@@ -7,11 +7,8 @@ import com.docucanvas.domain.repository.DocumentRepository;
 import com.docucanvas.infrastructure.ai.GeminiEmbeddingAdapter;
 import com.docucanvas.infrastructure.ai.SimpleChunker;
 import com.docucanvas.infrastructure.storage.TikaExtractor;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -37,7 +34,7 @@ public class IngestionService {
     }
 
     @Async
-    public void processIngestion(UUID documentId, MultipartFile file) {
+    public void processIngestion(UUID documentId, byte[] fileContent, String originalFilename) {
         log.info("Starting ingestion for document: {}", documentId);
         
         Document document = documentRepository.findById(documentId)
@@ -48,7 +45,7 @@ public class IngestionService {
             documentRepository.save(document);
 
             // 1. Extract Text
-            String text = tikaExtractor.extractText(file);
+            String text = tikaExtractor.extractText(fileContent, originalFilename);
             log.debug("Text extracted ({} characters)", text.length());
 
             // 2. Chunking

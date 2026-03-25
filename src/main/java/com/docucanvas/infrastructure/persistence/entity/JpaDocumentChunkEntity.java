@@ -12,7 +12,6 @@ import java.util.UUID;
 @Table(name = "document_chunks")
 public class JpaDocumentChunkEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "document_id", nullable = false)

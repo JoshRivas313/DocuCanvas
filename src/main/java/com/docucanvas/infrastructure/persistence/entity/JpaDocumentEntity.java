@@ -14,7 +14,6 @@ import java.util.UUID;
 @Table(name = "documents")
 public class JpaDocumentEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false)
