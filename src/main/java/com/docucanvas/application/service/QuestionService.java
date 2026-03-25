@@ -33,13 +33,16 @@ public class QuestionService {
     private final ChunkRepository chunkRepository;
     private final GeminiEmbeddingAdapter embeddingAdapter;
     private final GeminiRestClient geminiRestClient;
+    private final ImageGenerationService imageGenerationService;
 
     public QuestionService(ChunkRepository chunkRepository,
                            GeminiEmbeddingAdapter embeddingAdapter,
-                           GeminiRestClient geminiRestClient) {
+                           GeminiRestClient geminiRestClient,
+                           ImageGenerationService imageGenerationService) {
         this.chunkRepository = chunkRepository;
         this.embeddingAdapter = embeddingAdapter;
         this.geminiRestClient = geminiRestClient;
+        this.imageGenerationService = imageGenerationService;
     }
 
     public QuestionResponse answer(QuestionRequest request) {
@@ -58,7 +61,8 @@ public class QuestionService {
                     request.question(),
                     "No se encontró información relevante en los documentos indexados.",
                     List.of(),
-                    0
+                    0,
+                    null
             );
         }
 
@@ -80,11 +84,15 @@ public class QuestionService {
 
         log.info("Respuesta generada con {} chunks de contexto", relevantChunks.size());
 
+        // 6. Generar imagen visual representando el conocimiento (Pilar de la Charla)
+        String imageUrl = imageGenerationService.generateImage(answer);
+
         return new QuestionResponse(
                 request.question(),
                 answer,
                 sources,
-                relevantChunks.size()
+                relevantChunks.size(),
+                imageUrl
         );
     }
 }

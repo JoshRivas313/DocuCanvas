@@ -179,6 +179,7 @@
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-openai-image-spring-boot-starter</artifactId>
+			<version>${spring-ai.version}</version>
 		</dependency>
 	</dependencies>
 

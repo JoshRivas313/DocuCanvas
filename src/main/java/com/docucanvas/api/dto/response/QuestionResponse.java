@@ -6,5 +6,6 @@ public record QuestionResponse(
     String question,
     String answer,
     List<String> sources,
-    int chunkCount
+    int chunkCount,
+    String imageUrl
 ) {}
