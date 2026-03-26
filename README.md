@@ -3,7 +3,7 @@
 ![Spring AI](https://img.shields.io/badge/Spring%20AI-1.0.0--SNAPSHOT-green)
 ![RAG](https://img.shields.io/badge/Architecture-RAG-blue)
 ![ImageModel](https://img.shields.io/badge/AI-ImageModel-magenta)
-![License](https://img.shields.io/badge/License-MIT-gray)
+![Status](https://img.shields.io/badge/Status-Demo--Ready-emerald)
 
 > **"No leas la documentación, haz que Spring AI te la dibuje"**
 
@@ -123,7 +123,8 @@ c:/intelijent/Proyecto_Base_SpringBoot/
     "question": "repregunta",
     "answer": "Respuesta generada por Gemini...",
     "sources": ["doc_id_1", "doc_id_2"],
-    "chunksAnalyzed": 5
+    "chunksAnalyzed": 5,
+    "imageUrl": "data:image/png;base64,..."
   }
   ```
 
@@ -153,7 +154,7 @@ graph LR
     E --> F[Estado: COMPLETED]
 ```
 
-### Tubería de Consulta RAG
+### Tubería de Consulta RAG + Visual (MULTIMODAL)
 ```mermaid
 graph TD
     User([Usuario]) --> Q[Pregunta]
@@ -163,7 +164,9 @@ graph TD
     Context --> Prompt[RAG Prompt Engineering]
     Prompt --> Gemini[Gemini LLM Generation]
     Gemini --> Answer[Respuesta con Fuentes]
-    Answer --> User
+    Answer --> Visual[Visual Transformation: ImageModel REST]
+    Visual --> Output[Respuesta + Imagen 🎨]
+    Output --> User
 ```
 
 ## 🚀 Pasos para Ejecutar
