@@ -2,96 +2,62 @@ package com.docucanvas.application.service;
 
 import com.docucanvas.api.dto.request.QuestionRequest;
 import com.docucanvas.api.dto.response.QuestionResponse;
-import com.docucanvas.domain.model.DocumentChunk;
-import com.docucanvas.domain.repository.ChunkRepository;
-import com.docucanvas.infrastructure.ai.GeminiEmbeddingAdapter;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import com.docucanvas.infrastructure.ai.GeminiRestClient;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
 @Service
 public class QuestionService {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(QuestionService.class);
-    private static final String RAG_PROMPT_TEMPLATE = """
-            Eres un asistente experto en análisis de documentos.
-            Responde a la pregunta del usuario usando ÚNICAMENTE la información del contexto proporcionado.
-            Si la información no es suficiente para responder, indícalo claramente.
-            
-            Contexto de los documentos:
-            ---
-            %s
-            ---
-            
-            Pregunta del usuario: %s
-            
-            Respuesta:
+    
+    private static final String SYSTEM_PROMPT = """
+            Eres un asistente experto en análisis de documentos de DocuCanvas.
+            Responde de manera profesional usando el contexto recuperado.
+            Si no puedes responder con el contexto, admítelo educadamente.
             """;
 
-    private final ChunkRepository chunkRepository;
-    private final GeminiEmbeddingAdapter embeddingAdapter;
-    private final GeminiRestClient geminiRestClient;
+    private final ChatClient chatClient;
     private final ImageGenerationService imageGenerationService;
 
-    public QuestionService(ChunkRepository chunkRepository,
-                           GeminiEmbeddingAdapter embeddingAdapter,
-                           GeminiRestClient geminiRestClient,
+    public QuestionService(ChatClient.Builder chatClientBuilder,
+                           VectorStore vectorStore,
                            ImageGenerationService imageGenerationService) {
-        this.chunkRepository = chunkRepository;
-        this.embeddingAdapter = embeddingAdapter;
-        this.geminiRestClient = geminiRestClient;
         this.imageGenerationService = imageGenerationService;
+        
+        // Configuramos el ChatClient con el Advisor de RAG nativo
+        this.chatClient = chatClientBuilder
+                .defaultAdvisors(new QuestionAnswerAdvisor(vectorStore, SearchRequest.builder()
+                        .topK(4)
+                        .similarityThreshold(0.7)
+                        .build()))
+                .defaultSystem(SYSTEM_PROMPT)
+                .build();
     }
 
     public QuestionResponse answer(QuestionRequest request) {
-        log.info("Procesando pregunta: {}", request.question());
+        log.info("Procesando pregunta con Spring AI RAG Pipeline: {}", request.question());
 
-        // 1. Generar embedding de la pregunta
-        float[] questionEmbedding = embeddingAdapter.embed(request.question());
+        // El flujo RAG ocurre automáticamente gracias al QuestionAnswerAdvisor
+        String answer = chatClient.prompt()
+                .user(request.question())
+                .call()
+                .content();
 
-        // 2. Recuperar chunks relevantes (similitud vectorial)
-        List<DocumentChunk> relevantChunks = chunkRepository.findSimilar(
-                questionEmbedding, request.maxChunks());
+        log.info("Respuesta generada. Procediendo a generación visual.");
 
-        if (relevantChunks.isEmpty()) {
-            log.warn("No se encontraron chunks relevantes para la pregunta");
-            return new QuestionResponse(
-                    request.question(),
-                    "No se encontró información relevante en los documentos indexados.",
-                    List.of(),
-                    0,
-                    null
-            );
-        }
-
-        // 3. Construir contexto desde los chunks
-        String context = relevantChunks.stream()
-                .map(DocumentChunk::content)
-                .reduce("", (a, b) -> a + "\n\n" + b)
-                .trim();
-
-        // 4. Llamar al LLM con RAG prompt
-        String prompt = RAG_PROMPT_TEMPLATE.formatted(context, request.question());
-        String answer = geminiRestClient.generate(prompt);
-
-        // 5. Extraer fuentes únicas (por documentId)
-        List<String> sources = relevantChunks.stream()
-                .map(chunk -> chunk.documentId().toString())
-                .distinct()
-                .toList();
-
-        log.info("Respuesta generada con {} chunks de contexto", relevantChunks.size());
-
-        // 6. Generar imagen visual representando el conocimiento (Pilar de la Charla)
+        // Generación visual (Pilar de la Charla - "Haz que Spring AI te la dibuje")
         String imageUrl = imageGenerationService.generateImage(answer);
 
         return new QuestionResponse(
                 request.question(),
                 answer,
-                sources,
-                relevantChunks.size(),
+                List.of("Source: Spring AI VectorStore"),
+                4,
                 imageUrl
         );
     }

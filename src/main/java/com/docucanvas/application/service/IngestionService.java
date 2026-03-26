@@ -1,18 +1,17 @@
 package com.docucanvas.application.service;
 
-import com.docucanvas.domain.model.Document;
-import com.docucanvas.domain.model.DocumentChunk;
 import com.docucanvas.domain.model.DocumentStatus;
 import com.docucanvas.domain.repository.DocumentRepository;
-import com.docucanvas.infrastructure.ai.GeminiEmbeddingAdapter;
-import com.docucanvas.infrastructure.ai.SimpleChunker;
 import com.docucanvas.infrastructure.storage.TikaExtractor;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import java.util.stream.IntStream;
 
 @Service
 public class IngestionService {
@@ -20,67 +19,64 @@ public class IngestionService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(IngestionService.class);
     private final DocumentRepository documentRepository;
     private final TikaExtractor tikaExtractor;
-    private final SimpleChunker chunker;
-    private final GeminiEmbeddingAdapter embeddingAdapter;
+    private final VectorStore vectorStore;
+    private final TokenTextSplitter tokenTextSplitter;
 
     public IngestionService(DocumentRepository documentRepository,
                             TikaExtractor tikaExtractor,
-                            SimpleChunker chunker,
-                            GeminiEmbeddingAdapter embeddingAdapter) {
+                            VectorStore vectorStore) {
         this.documentRepository = documentRepository;
         this.tikaExtractor = tikaExtractor;
-        this.chunker = chunker;
-        this.embeddingAdapter = embeddingAdapter;
+        this.vectorStore = vectorStore;
+        // Chunking inteligente por tokens (aprox 800 tokens con 100 de solapamiento)
+        this.tokenTextSplitter = new TokenTextSplitter(800, 100, 5, 10000, true);
     }
 
     @Async
     public void processIngestion(UUID documentId, byte[] fileContent, String originalFilename) {
         log.info("Starting ingestion for document: {}", documentId);
         
-        Document document = documentRepository.findById(documentId)
+        com.docucanvas.domain.model.Document domainDocument = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
 
         try {
-            document.setStatus(DocumentStatus.PROCESSING);
-            documentRepository.save(document);
+            domainDocument.setStatus(DocumentStatus.PROCESSING);
+            documentRepository.save(domainDocument);
 
-            // 1. Extract Text
+            // 1. Extraer Texto con Tika
             String text = tikaExtractor.extractText(fileContent, originalFilename);
-            log.debug("Text extracted ({} characters)", text.length());
+            log.debug("Texto extraído ({} caracteres)", text.length());
 
-            // 2. Chunking
-            List<String> textChunks = chunker.splitIntoChunks(text);
-            log.debug("Split into {} chunks", textChunks.size());
-
-            // 3. Embedding
-            List<float[]> embeddings = embeddingAdapter.embedChunks(textChunks);
-            log.debug("Embeddings generated for {} chunks", embeddings.size());
-
-            // 4. Save Chunks
-            List<DocumentChunk> domainChunks = IntStream.range(0, textChunks.size())
-                    .mapToObj(i -> new DocumentChunk(
-                            UUID.randomUUID(),
-                            documentId,
-                            textChunks.get(i),
-                            embeddings.get(i),
-                            i,
-                            java.time.Instant.now()
-                    ))
-                    .toList();
-
-            documentRepository.saveChunks(domainChunks);
-
-            // 5. Complete
-            document.setStatus(DocumentStatus.READY);
-            document.setChunkCount(textChunks.size());
-            documentRepository.save(document);
+            // 2. Chunking Inteligente con Spring AI
+            List<Document> springAiDocs = tokenTextSplitter.apply(List.of(new Document(text)));
             
-            log.info("Ingestion completed successfully for document: {}", documentId);
+            // Enriquecer con Metadatos (Pilar del RAG)
+            for (int i = 0; i < springAiDocs.size(); i++) {
+                Document doc = springAiDocs.get(i);
+                doc.getMetadata().putAll(Map.of(
+                        "documentId", documentId.toString(),
+                        "chunkIndex", i,
+                        "source", originalFilename
+                ));
+            }
+            log.debug("Dividido en {} chunks inteligentes", springAiDocs.size());
+
+            // 3. Ingesta Vectorial (Embedding + Save en un solo paso)
+            // Spring AI se encarga de llamar al EmbeddingModel configurado en YAML
+            vectorStore.add(springAiDocs);
+            log.info("Vectores persistidos en VectorStore para el documento: {}", documentId);
+
+            // 5. Completar Proceso
+            domainDocument.setStatus(DocumentStatus.READY);
+            domainDocument.setChunkCount(springAiDocs.size());
+            documentRepository.save(domainDocument);
+            
+            log.info("Ingesta completada exitosamente para: {}", originalFilename);
 
         } catch (Exception e) {
-            log.error("Ingestion failed for document: {}", documentId, e);
-            document.setStatus(DocumentStatus.FAILED);
-            documentRepository.save(document);
+            log.error("Fallo en la ingesta para documento: {}", documentId, e);
+            domainDocument.setStatus(DocumentStatus.FAILED);
+            documentRepository.save(domainDocument);
         }
     }
 }
