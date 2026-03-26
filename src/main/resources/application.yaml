@@ -2,22 +2,23 @@ spring:
   application:
     name: docu-canvas
   ai:
-    google:
-      ai:
-        gemini:
-          api-key: AIzaSyChPbQ1_oAB040XTm38daliDlgDt9SUtaw
-          chat:
-            options:
-              model: gemini-1.5-flash
-          embedding:
-            options:
-              model: text-embedding-004
-      vectorstore:
-        pgvector:
-          table-name: document_chunks
-          index-type: HNSW
-          distance-type: COSINE
-          dimensions: 768
+    openai:
+      api-key: ${OPENAI_API_KEY:sk-proj-reemplazame}
+      chat:
+        options:
+          model: gpt-4o-mini
+      embedding:
+        options:
+          model: text-embedding-3-small
+      image:
+        options:
+          model: dall-e-3
+          n: 1
+          size: 1024x1024
+    vectorstore:
+      pgvector:
+        table-name: document_chunks
+        dimensions: 768
 
   datasource:
     url: jdbc:postgresql://localhost:5433/docucanvas

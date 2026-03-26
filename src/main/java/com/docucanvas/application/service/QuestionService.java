@@ -6,6 +6,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.image.ImageModel;
+import org.springframework.ai.image.ImageResponse;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,11 +25,14 @@ public class QuestionService {
 
     private final ChatClient chatClient;
     private final ImageGenerationService imageGenerationService;
+    private final ImageModel imageModel;
 
     public QuestionService(ChatClient.Builder chatClientBuilder,
                            VectorStore vectorStore,
-                           ImageGenerationService imageGenerationService) {
+                           ImageGenerationService imageGenerationService,
+                           ImageModel imageModel) {
         this.imageGenerationService = imageGenerationService;
+        this.imageModel = imageModel;
         
         // Configuramos el ChatClient con el Advisor de RAG nativo
         this.chatClient = chatClientBuilder
@@ -50,8 +55,16 @@ public class QuestionService {
 
         log.info("Respuesta generada. Procediendo a generación visual.");
 
-        // Generación visual (Pilar de la Charla - "Haz que Spring AI te la dibuje")
-        String imageUrl = imageGenerationService.generateImage(answer);
+        // Generación visual usando DALL-E
+        String imageUrl = "";
+        try {
+            org.springframework.ai.image.ImagePrompt visualPrompt = imageGenerationService.generateImagePrompt(answer);
+            ImageResponse response = imageModel.call(visualPrompt);
+            imageUrl = response.getResult().getOutput().getUrl();
+        } catch (Exception e) {
+            log.error("Fallo de ImageModel: ", e);
+            imageUrl = "Error al generar imagen visual: " + e.getMessage();
+        }
 
         return new QuestionResponse(
                 request.question(),
