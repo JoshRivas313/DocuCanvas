@@ -44,11 +44,24 @@
                             <span x-show="loading">Procesando...</span>
                         </button>
                     </div>
-                    <!-- File Ingestion (Visual Mock for now) -->
-                    <div class="border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 transition cursor-pointer">
-                        <svg class="w-12 h-12 text-slate-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                        <p class="text-slate-400">Subir PDF, DOCX o TXT</p>
-                        <span class="text-xs text-slate-500 mt-2">(Próxima Versión)</span>
+                    <!-- File Ingestion -->
+                    <div 
+                        @click="$refs.fileInput.click()"
+                        @dragover.prevent="dragOver = true"
+                        @dragleave.prevent="dragOver = false"
+                        @drop.prevent="handleDrop($event)"
+                        :class="dragOver ? 'border-sky-500 bg-sky-500/10' : 'border-white/10 bg-white/5'"
+                        class="border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-8 hover:bg-white/10 transition cursor-pointer relative group">
+                        
+                        <input type="file" x-ref="fileInput" @change="handleFileUpload($event)" class="hidden">
+                        
+                        <svg class="w-12 h-12 text-slate-500 mb-4 group-hover:text-sky-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <p class="text-slate-400 font-medium">Arrastra o haz clic para subir</p>
+                        <span class="text-xs text-slate-500 mt-2">PDF, DOCX, TXT (Max 10MB)</span>
+                        
+                        <div x-show="loading" class="absolute inset-0 bg-slate-900/80 rounded-2xl flex items-center justify-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -128,12 +141,49 @@
                 question: '',
                 textIngest: { title: '', content: '' },
                 documents: [],
+                dragOver: false,
                 chatHistory: [
                     { role: 'ai', content: '¡Hola! Sube un documento y pregúntame lo que necesites.' }
                 ],
 
                 init() {
                     this.loadDocuments();
+                    // Auto-refresh docs status
+                    setInterval(() => this.loadDocuments(), 5000);
+                },
+
+                handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) this.uploadFile(file);
+                },
+
+                handleDrop(event) {
+                    this.dragOver = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file) this.uploadFile(file);
+                },
+
+                async uploadFile(file) {
+                    this.loading = true;
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('title', file.name);
+
+                    try {
+                        const res = await fetch('/api/v1/documents/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (res.ok) {
+                            await this.loadDocuments();
+                        } else {
+                            alert('Error al subir el archivo');
+                        }
+                    } catch (e) {
+                        console.error('Upload error', e);
+                    } finally {
+                        this.loading = false;
+                    }
                 },
 
                 async loadDocuments() {

@@ -20,7 +20,7 @@ public class JpaDocumentChunkEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "embedding", columnDefinition = "vector(1536)")
+    @Column(name = "embedding", columnDefinition = "vector(768)")
     private float[] embedding;
 
     @JdbcTypeCode(SqlTypes.JSON)

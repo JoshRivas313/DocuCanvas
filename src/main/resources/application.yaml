@@ -5,13 +5,19 @@ spring:
     google:
       ai:
         gemini:
-          api-key: AIzaSyDEOAxuHEe7ORRD460pEJSN3UdAOY1T8LY
+          api-key: AIzaSyChPbQ1_oAB040XTm38daliDlgDt9SUtaw
           chat:
             options:
               model: gemini-1.5-flash
           embedding:
             options:
               model: text-embedding-004
+      vectorstore:
+        pgvector:
+          table-name: document_chunks
+          index-type: HNSW
+          distance-type: COSINE
+          dimensions: 768
 
   datasource:
     url: jdbc:postgresql://localhost:5433/docucanvas
