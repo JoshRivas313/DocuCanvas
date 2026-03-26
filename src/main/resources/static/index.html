@@ -180,7 +180,12 @@
                         });
                         if (res.ok) {
                             const data = await res.json();
-                            this.chatHistory.push({ role: 'ai', content: data.answer, sources: data.sources });
+                            this.chatHistory.push({ 
+                                role: 'ai', 
+                                content: data.answer, 
+                                sources: data.sources,
+                                imageUrl: data.imageUrl 
+                            });
                         } else {
                             this.chatHistory.push({ role: 'ai', content: 'Lo siento, hubo un problema al procesar tu pregunta.' });
                         }
