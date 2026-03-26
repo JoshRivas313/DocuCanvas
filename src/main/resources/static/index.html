@@ -6,12 +6,20 @@
     <title>DocuCanvas | Inteligencia sobre tus Documentos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .gradient-text { background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         [x-cloak] { display: none !important; }
+        @keyframes dash {
+          to { stroke-dashoffset: -100; }
+        }
+        .animate-flow {
+            stroke-dasharray: 10, 10;
+            animation: dash 2s linear infinite;
+        }
     </style>
 </head>
 <body x-data="docApp()" class="min-h-screen">
@@ -23,6 +31,8 @@
             <div class="flex gap-4">
                 <button @click="view = 'upload'" :class="view === 'upload' ? 'text-sky-400' : 'text-slate-400'" class="font-medium">Subir</button>
                 <button @click="view = 'ask'" :class="view === 'ask' ? 'text-sky-400' : 'text-slate-400'" class="font-medium">Preguntar</button>
+                <button @click="view = 'chunks'; if(!chunksLoaded) fetchChunks()" :class="view === 'chunks' ? 'text-sky-400' : 'text-slate-400'" class="font-medium shadow-md px-2 rounded-lg bg-sky-900/30">Visor de Chunks</button>
+                <button @click="view = 'pipeline'" :class="view === 'pipeline' ? 'text-sky-400' : 'text-slate-400'" class="font-medium">Pipeline RAG</button>
             </div>
         </div>
     </header>
@@ -131,6 +141,77 @@
             </div>
         </div>
 
+        <!-- Vista: Animated Pipeline -->
+        <div x-show="view === 'pipeline'" x-transition x-cloak>
+            <div class="glass p-8 rounded-2xl shadow-2xl flex flex-col items-center justify-center min-h-[70vh]">
+                <h2 class="text-3xl font-bold mb-12 gradient-text">Multimodal RAG Pipeline</h2>
+                <!-- SVG Diagram -->
+                <svg viewBox="0 0 800 300" class="w-full h-auto max-w-4xl drop-shadow-2xl">
+                    <defs>
+                        <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#38bdf8"/>
+                            <stop offset="100%" stop-color="#818cf8"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- Flow Lines -->
+                    <path class="animate-flow" d="M 100 150 L 700 150" fill="none" stroke="url(#glow)" stroke-width="4"/>
+                    
+                    <!-- Nodes -->
+                    <g transform="translate(50, 100)">
+                        <rect width="100" height="100" rx="15" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                        <text x="50" y="55" fill="white" font-size="14" text-anchor="middle" font-weight="bold">Documento</text>
+                    </g>
+                    
+                    <g transform="translate(250, 100)" class="animate-pulse">
+                        <rect width="100" height="100" rx="15" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                        <text x="50" y="45" fill="white" font-size="14" text-anchor="middle" font-weight="bold">Apache Tika</text>
+                        <text x="50" y="70" fill="#94a3b8" font-size="12" text-anchor="middle">+ Chunking</text>
+                    </g>
+
+                    <g transform="translate(450, 100)">
+                        <rect width="100" height="100" rx="15" fill="#1e293b" stroke="#818cf8" stroke-width="2"/>
+                        <text x="50" y="45" fill="white" font-size="14" text-anchor="middle" font-weight="bold">PgVector</text>
+                        <text x="50" y="70" fill="#94a3b8" font-size="12" text-anchor="middle">Embeddings</text>
+                    </g>
+
+                    <g transform="translate(650, 100)" class="animate-bounce">
+                        <rect width="120" height="100" rx="15" fill="#1e293b" stroke="#818cf8" stroke-width="2"/>
+                        <text x="60" y="45" fill="white" font-size="14" text-anchor="middle" font-weight="bold">OpenAI GPT</text>
+                        <text x="60" y="70" fill="#94a3b8" font-size="12" text-anchor="middle">+ DALL-E 3</text>
+                    </g>
+                </svg>
+                <div class="mt-12 text-center text-slate-400">
+                    <p>Spring AI orquesta todo este flujo con <code class="text-sky-400 bg-slate-900 px-2 py-1 rounded">QuestionAnswerAdvisor</code> y <code class="text-indigo-400 bg-slate-900 px-2 py-1 rounded">ImageModel</code>.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista: Chunks Explorer -->
+        <div x-show="view === 'chunks'" x-transition x-cloak>
+            <div class="glass rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[70vh]">
+                <!-- Gráfico 3D -->
+                <div class="w-full md:w-2/3 bg-slate-900/50 p-2 relative">
+                    <div x-show="loadingChunks" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-10">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
+                    </div>
+                    <!-- El div que Plotly usará -->
+                    <div id="plotly-3d-map" class="w-full h-full"></div>
+                </div>
+                <!-- Inspector de Chunks -->
+                <div class="w-full md:w-1/3 border-l border-white/5 overflow-y-auto p-4 space-y-4">
+                    <h3 class="text-xl font-bold gradient-text sticky top-0 bg-slate-900 px-2 py-4">Inspector Semántico</h3>
+                    <template x-for="chunk in chunksData" :key="chunk.id">
+                        <div class="glass p-4 rounded-xl cursor-default hover:bg-white/5 transition border-l-2 border-indigo-500">
+                            <p class="text-[10px] text-sky-400 font-mono mb-2" x-text="chunk.id"></p>
+                            <p class="text-sm text-slate-300" x-text="chunk.content"></p>
+                            <p class="text-[10px] text-slate-500 mt-2">Vector 3D: [<span x-text="chunk.coordinates[0]?chunk.coordinates[0].toFixed(2):0"></span>, <span x-text="chunk.coordinates[1]?chunk.coordinates[1].toFixed(2):0"></span>, <span x-text="chunk.coordinates[2]?chunk.coordinates[2].toFixed(2):0"></span>]</p>
+                        </div>
+                    </template>
+                    <div x-show="chunksData.length === 0 && !loadingChunks" class="text-slate-500 italic py-4">No hay chunks indexados o el backend no respondió. Sube un PDF primero.</div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <script>
@@ -145,6 +226,9 @@
                 chatHistory: [
                     { role: 'ai', content: '¡Hola! Sube un documento y pregúntame lo que necesites.' }
                 ],
+                chunksData: [],
+                loadingChunks: false,
+                chunksLoaded: false,
 
                 init() {
                     this.loadDocuments();
@@ -191,6 +275,54 @@
                         const res = await fetch('/api/v1/documents');
                         if (res.ok) this.documents = await res.json();
                     } catch (e) { console.error('Error loading docs', e); }
+                },
+
+                async fetchChunks() {
+                    this.loadingChunks = true;
+                    try {
+                        const res = await fetch('/api/v1/chunks/visualize');
+                        if (res.ok) {
+                            this.chunksData = await res.json();
+                            this.chunksLoaded = true;
+                            this.render3DMap();
+                        }
+                    } catch (e) {
+                        console.error('Error fetching chunks', e);
+                    } finally {
+                        this.loadingChunks = false;
+                    }
+                },
+
+                render3DMap() {
+                    if (this.chunksData.length === 0) return;
+                    
+                    const trace = {
+                        x: this.chunksData.map(c => c.coordinates[0]),
+                        y: this.chunksData.map(c => c.coordinates[1]),
+                        z: this.chunksData.map(c => c.coordinates[2]),
+                        text: this.chunksData.map(c => c.content),
+                        mode: 'markers',
+                        marker: {
+                            size: 8,
+                            color: this.chunksData.map(c => c.coordinates[0]), // Color by x for gradient
+                            colorscale: 'Viridis',
+                            opacity: 0.8
+                        },
+                        type: 'scatter3d',
+                        hoverinfo: 'text'
+                    };
+
+                    const layout = {
+                        margin: {l: 0, r: 0, b:0, t:0},
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        scene: {
+                            xaxis: { showbackground: false, color: '#f8fafc', gridcolor: '#1e293b' },
+                            yaxis: { showbackground: false, color: '#f8fafc', gridcolor: '#1e293b' },
+                            zaxis: { showbackground: false, color: '#f8fafc', gridcolor: '#1e293b' }
+                        }
+                    };
+
+                    Plotly.newPlot('plotly-3d-map', [trace], layout, {responsive: true});
                 },
 
                 async ingestText() {
