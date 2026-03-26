@@ -60,17 +60,26 @@ c:/intelijent/Proyecto_Base_SpringBoot/
 └── pom.xml                         # Gestión de dependencias Maven
 ```
 
+## 🐳 Arquitectura de Contenedores (Docker)
+
+El proyecto utiliza infraestructura en contenedores para garantizar que la ejecución sea idéntica en cualquier entorno y facilitar el despliegue.
+
+| Contenedor | Imagen Docker | Propósito en el Ecosistema RAG |
+| :--- | :--- | :--- |
+| **PostgreSQL** | `pgvector/pgvector:16-1.1-1` | Actúa como nuestra base de datos relacional principal y almacena los metadatos de los documentos. |
+| **PgVector Extension** | (incluida arriba) | Habilita operaciones matemáticas vectoriales sobre PostgreSQL. Convierte a PostgreSQL en un potente **Vector Store** capaz de almacenar los embeddings generados por OpenAI (1536 dimensiones) y realizar búsquedas de similitud en milisegundos usando el algoritmo HNSW. |
+| **Adminer** (Opcional) | `adminer` | Interfaz web ligera para visualizar directamente los vectores y embeddings generados dentro de las tablas de bases de datos. |
+
 ## 🛠️ Stack Tecnológico
 
 | Componente | Tecnología | Versión |
 | :--- | :--- | :--- |
 | **Lenguaje** | Java | 21 |
-| **Framework** | Spring Boot | 3.4 |
-| **Base de Datos** | PostgreSQL (pgvector) | latest |
-| **IA (LLM)** | Google Gemini (Pro/Flash) | 1.5 |
-| **Embeddings** | Google AI (text-embedding) | 004 |
-| **Persistencia** | Spring Data JPA / JDBC | 3.4 |
-| **Migraciones** | Flyway | 10.x |
+| **Framework** | Spring Boot | 3.4.x |
+| **Base de Datos** | PostgreSQL (Diferenciado con pgvector) | 16 |
+| **IA Chat / RAG** | OpenAI (GPT-4o-mini) | Spring AI 1.0.0-M5 |
+| **Embeddings** | OpenAI (text-embedding-3-small) | 1536 dims |
+| **IA Visual** | OpenAI DALL-E 3 (ImageModel) | 1024x1024 |
 | **UI Styling** | Tailwind CSS | 3.x |
 
 ## 🔌 Diseño de la API REST
@@ -121,10 +130,10 @@ c:/intelijent/Proyecto_Base_SpringBoot/
   ```json
   {
     "question": "repregunta",
-    "answer": "Respuesta generada por Gemini...",
+    "answer": "Respuesta generada por OpenAI GPT 4o-mini...",
     "sources": ["doc_id_1", "doc_id_2"],
     "chunksAnalyzed": 5,
-    "imageUrl": "data:image/png;base64,..."
+    "imageUrl": "https://oaidalleapiprodscus..."
   }
   ```
 
@@ -149,7 +158,7 @@ Por defecto, la aplicación incluye **Spring Security**. Para facilitar la demo:
 graph LR
     A[Archivo/Texto] --> B[Apache Tika]
     B --> C[Text Chunking]
-    C --> D[Gemini Embedding]
+    C --> D[OpenAI Embedding]
     D --> E[PostgreSQL pgvector]
     E --> F[Estado: COMPLETED]
 ```
@@ -158,20 +167,20 @@ graph LR
 ```mermaid
 graph TD
     User([Usuario]) --> Q[Pregunta]
-    Q --> Emb[Gemini Embedding]
+    Q --> Emb[OpenAI Embedding]
     Emb --> Search[Vector Search pgvector]
     Search --> Context[Contexto Recuperado]
     Context --> Prompt[RAG Prompt Engineering]
-    Prompt --> Gemini[Gemini LLM Generation]
-    Gemini --> Answer[Respuesta con Fuentes]
-    Answer --> Visual[Visual Transformation: ImageModel REST]
-    Visual --> Output[Respuesta + Imagen 🎨]
+    Prompt --> Gen[OpenAI GPT-4o-mini]
+    Gen --> Answer[Respuesta con Fuentes]
+    Answer --> Visual[Visual Transformation: DALL-E 3]
+    Visual --> Output[Respuesta + Imagen Generada 🎨]
     Output --> User
 ```
 
 ## 🚀 Pasos para Ejecutar
 
-1. **Levantar DB**: `docker-compose up -d`
-2. **Configurar API Key**: Añadir `spring.ai.google.ai.gemini.api-key` en `application.yaml`.
+1. **Levantar Infraestructura**: `docker-compose up -d` (Esto levantará el contenedor de pgvector necesario para el vector store).
+2. **Configurar API Key**: Configura tu variable de entorno `OPENAI_API_KEY` o añádela en `application.yaml` (`spring.ai.openai.api-key`).
 3. **Compilar y Ejecutar**: `./mvnw spring-boot:run -Dmaven.test.skip=true`
-4. **Acceder**: `http://localhost:8080`
+4. **Acceder a la Web**: Ingresa a `http://localhost:8080` para disfrutar de la UI.
