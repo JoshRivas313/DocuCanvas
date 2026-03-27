@@ -39,7 +39,7 @@ public class ChunkService {
         log.info("Calculando proyección 3D con PCA y Clustering dinámico para vista global");
 
         List<RawChunkData> rawData = jdbcClient
-                .sql("SELECT id, content, embedding::text as emb_text, metadata->>'file_name' as doc_name FROM document_chunks LIMIT :limit")
+                .sql("SELECT id, content, embedding::text as emb_text, metadata->>'source' as doc_name FROM document_chunks LIMIT :limit")
                 .param("limit", MAX_CHUNKS_VISUALIZE)
                 .query((rs, rowNum) -> new RawChunkData(
                         rs.getString("id"),
@@ -61,8 +61,8 @@ public class ChunkService {
         log.info("Generando vista de indexación avanzada para el documento: {}", documentId);
 
         List<RawChunkData> rawData = jdbcClient
-                .sql("SELECT id, content, embedding::text as emb_text, metadata->>'file_name' as doc_name FROM document_chunks " +
-                     "WHERE metadata->>'documentId' = :documentId ORDER BY metadata->>'chunk_index'")
+                .sql("SELECT id, content, embedding::text as emb_text, metadata->>'source' as doc_name FROM document_chunks " +
+                     "WHERE metadata->>'documentId' = :documentId ORDER BY (metadata->>'chunkIndex')::int")
                 .param("documentId", documentId)
                 .query((rs, rowNum) -> new RawChunkData(
                         rs.getString("id"),
