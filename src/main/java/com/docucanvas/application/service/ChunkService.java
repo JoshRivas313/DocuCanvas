@@ -21,7 +21,7 @@ public class ChunkService {
 
     private static final Logger log = LoggerFactory.getLogger(ChunkService.class);
     private static final int MAX_CONTENT_PREVIEW = 100;
-    private static final int MAX_CHUNKS_VISUALIZE = 50;
+    private static final int MAX_CHUNKS_VISUALIZE = 300;
 
     private final JdbcClient jdbcClient;
 
