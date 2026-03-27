@@ -203,18 +203,15 @@
                         <h3 class="text-xl font-bold gradient-text mb-4">Inspector Semántico</h3>
                         <div class="space-y-3">
                             <input x-model="searchQuery" @keyup.enter="performSearch()" type="text" placeholder="🔍 Simular búsqueda RAG..." class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-500 text-sm">
-                            <div class="flex gap-2 text-[10px] flex-wrap font-bold">
-                                <button @click="searchQuery='Seguridad'; performSearch()" class="px-2 py-1 bg-sky-900/50 hover:bg-sky-500/50 text-sky-200 rounded border border-sky-500/30 transition">Seguridad</button>
-                                <button @click="searchQuery='Arquitectura'; performSearch()" class="px-2 py-1 bg-sky-900/50 hover:bg-sky-500/50 text-sky-200 rounded border border-sky-500/30 transition">Arquitectura</button>
-                                <button @click="searchQuery='Datos'; performSearch()" class="px-2 py-1 bg-sky-900/50 hover:bg-sky-500/50 text-sky-200 rounded border border-sky-500/30 transition">Datos</button>
-                                <button x-show="highlightedChunkIds.length > 0" @click="resetSearch()" class="px-2 py-1 text-rose-400 hover:text-rose-300 transition">Quitar Filtro</button>
-                            </div>
-                            <select x-model="selectedDocument" @change="filterByDocument()" class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold text-indigo-300 transition">
-                                <option value="">🌍 Todos los Documentos</option>
+                            <div class="flex gap-2 text-[10px] flex-wrap font-bold" x-show="uniqueDocuments.length > 0">
                                 <template x-for="doc in uniqueDocuments" :key="doc">
-                                    <option :value="doc" x-text="doc"></option>
+                                    <button @click="selectedDocument = doc; filterByDocument()" 
+                                            :class="selectedDocument === doc ? 'bg-rose-500 text-white border-rose-400' : 'bg-sky-900/50 hover:bg-sky-500/50 text-sky-200 border-sky-500/30'" 
+                                            class="px-2 py-1 rounded border transition" 
+                                            x-text="doc.substring(0,25) + (doc.length > 25 ? '...' : '')"></button>
                                 </template>
-                            </select>
+                                <button x-show="selectedDocument !== '' || highlightedChunkIds.length > 0" @click="resetSearch()" class="px-2 py-1 text-rose-400 hover:text-rose-300 transition px-2 py-1 rounded border border-rose-500/30">Limpiar</button>
+                            </div>
                         </div>
                     </div>
 
@@ -325,17 +322,17 @@
                 },
 
                 render3DMap() {
-                    if (this.chunksData.length === 0) return;
+                    const hasData = this.chunksData && this.chunksData.length > 0;
                     
                     const trace = {
-                        x: this.chunksData.map(c => c.coordinates[0]),
-                        y: this.chunksData.map(c => c.coordinates[1]),
-                        z: this.chunksData.map(c => c.coordinates[2]),
-                        text: this.chunksData.map(c => c.content),
+                        x: hasData ? this.chunksData.map(c => c.coordinates[0]) : [],
+                        y: hasData ? this.chunksData.map(c => c.coordinates[1]) : [],
+                        z: hasData ? this.chunksData.map(c => c.coordinates[2]) : [],
+                        text: hasData ? this.chunksData.map(c => c.content) : [],
                         mode: 'markers',
                         marker: {
-                            size: 8,
-                            color: this.chunksData.map(c => c.coordinates[0]), // Color by x for gradient
+                            size: hasData ? 8 : 0.1,
+                            color: hasData ? this.chunksData.map(c => c.coordinates[0]) : [], // Color by x for gradient
                             colorscale: 'Viridis',
                             opacity: 0.8
                         },
@@ -352,6 +349,15 @@
                             zaxis: { showbackground: false, color: '#f8fafc', gridcolor: '#1e293b' }
                         }
                     };
+
+                    if (!hasData) {
+                        layout.scene.annotations = [{
+                            x: 0, y: 0, z: 0,
+                            text: "Sube un documento primero para visualizar el espacio latente",
+                            showarrow: false,
+                            font: { color: '#94a3b8', size: 14 }
+                        }];
+                    }
 
                     Plotly.newPlot('plotly-3d-map', [trace], layout, {responsive: true});
                 },
