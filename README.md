@@ -11,145 +11,66 @@ DocuCanvas es una plataforma de consulta inteligente sobre documentos que utiliz
 
 ---
 
-## 🎨 Visual RAG: El Pilar de la Charla
+## 🎨 Características Principales (Demo-Ready)
 
 A diferencia de los chats tradicionales con PDFs, DocuCanvas implementa un pipeline multimodal completo:
 
-1.  **Ingesta**: Extracción con Tika y Chunking inteligente.
-2.  **Recuperación**: Búsqueda semántica en PGVector.
-3.  **Generación de Texto**: Respuesta fundamentada (Grounded) para evitar alucinaciones.
-4.  **Generación Visual**: Uso de `ImageModel` para transformar el conocimiento recuperado en una imagen descriptiva.
-
-### 🎥 Demo E2E (Script)
-
-Puedes ejecutar la demo completa usando el script de PowerShell incluido:
-```powershell
-./demo_e2e.ps1
-```
+1. **Ingesta y Chunking Optimizado**: Extracción con Tika y fragmentación inteligente a 200 tokens para demostración visual y ahorro masivo de costos de contexto LLM.
+2. **Indexación Aislada (Transparencia RAG)**: Nueva vista interactiva que permite auditar cómo el sistema divide la información por cada documento (chunking y vectores 3D).
+3. **Recuperación Semántica**: Búsqueda vectorial exacta en PostgreSQL con la extensión PGVector.
+4. **Generación de Texto (Grounded)**: Respuestas fundamentadas usando métricas de similitud de coseno para evitar alucinaciones.
+5. **Generación Visual Multimodal**: Uso de `ImageModel` (DALL-E 3) para transformar el conocimiento recuperado en una infografía/imagen de alta calidad.
 
 ---
 
-## 🚀 Instalación y Uso
-DocuCanvas es una plataforma avanzada de Análisis de Documentos con Generación Aumentada por Recuperación (RAG).
+## 🚀 Instalación y Uso Rápido
 
-## 📂 Estructura de Carpetas
+### Requisitos Previos
+- Docker Desktop (Para la Base de Datos Vectorial)
+- Java 21 + Maven
+- API Key de OpenAI
 
-El proyecto sigue una arquitectura hexagonal (Clean Architecture):
+### Pasos para Ejecutar
+1. **Levantar Infraestructura**:
+   ```bash
+   docker-compose up -d
+   ```
+   *(Esto descargará y ejecutará `pgvector/pgvector:16`, creando una base de datos 100% limpia).*
+   
+2. **Configurar API Key**:
+   Configura tu variable en `src/main/resources/application.yaml` o mediante variable entorno de tu SO:
+   ```yaml
+   spring.ai.openai.api-key: sk-tu-api-key
+   ```
+   
+3. **Ejecutar Spring Boot**:
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+   Al iniciar, Flyway ejecutará automáticamente todas las migraciones SQL (`V1` a `V4`) garantizando que el esquema de PGVector sea el correcto.
 
+4. **Acceder a la Interfaz Web**:
+   Ingresa a [http://localhost:8080](http://localhost:8080).
+   - ¡Sube un documento!
+   - Visita la **Vista Indexación** para visualizar el trabajo fragmentado que hizo Spring AI.
+   - Pide al Chat que te genere una respuesta gráfica.
+
+---
+
+## 📂 Arquitectura (Clean Architecture)
 ```text
 c:/intelijent/Proyecto_Base_SpringBoot/
 ├── src/main/java/com/docucanvas/
-│   ├── api/                        # Capa de Entrada (Adaptadores de Conducción)
-│   │   ├── controller/             # Controladores REST
-│   │   └── dto/                    # Objetos de Transferencia de Datos (Req/Res)
-│   ├── application/                # Capa de Aplicación (Lógica de Casos de Uso)
-│   │   ├── service/                # Servicios de Orquestación (Ingesta, RAG)
-│   │   └── usecase/                # Definición de Casos de Uso
-│   ├── domain/                     # Capa de Dominio (Núcleo del Negocio)
-│   │   ├── model/                  # Entidades y Objetos de Valor
-│   │   └── repository/             # Interfaces de Repositorio (Puertos)
-│   └── infrastructure/             # Capa de Infraestructura (Adaptadores de Salida)
-│       ├── ai/                     # Clientes de IA (Gemini REST)
-│       ├── persistence/            # Implementaciones de Base de Datos (JPA/JDBC)
-│       └── config/                 # Configuraciones de Framework
+│   ├── api/                        # Controladores REST y UI 
+│   ├── application/                # Servicios Core (ChunkService, IngestionService, RAG)
+│   ├── domain/                     # Modelos y Puertos DB
+│   └── infrastructure/             # Configuración Spring AI, Postgres
 ├── src/main/resources/
-│   ├── db/migration/               # Scripts de Flyway (Esquema SQL)
-│   ├── static/                     # Frontend (HTML, JS, CSS)
-│   └── application.yaml            # Configuración del entorno
-├── docker-compose.yml              # Infraestructura (PostgreSQL + pgvector)
-└── pom.xml                         # Gestión de dependencias Maven
+│   ├── db/migration/               # Flyway SQL (V1, V2, V3, V4)
+│   ├── static/index.html           # Interfaz Gráfica (AlpineJS + Plotly)
+│   └── application.yaml            # Configuración
+└── docker-compose.yml              # PGVector Server
 ```
-
-## 🐳 Arquitectura de Contenedores (Docker)
-
-El proyecto utiliza infraestructura en contenedores para garantizar que la ejecución sea idéntica en cualquier entorno y facilitar el despliegue.
-
-| Contenedor | Imagen Docker | Propósito en el Ecosistema RAG |
-| :--- | :--- | :--- |
-| **PostgreSQL** | `pgvector/pgvector:16-1.1-1` | Actúa como nuestra base de datos relacional principal y almacena los metadatos de los documentos. |
-| **PgVector Extension** | (incluida arriba) | Habilita operaciones matemáticas vectoriales sobre PostgreSQL. Convierte a PostgreSQL en un potente **Vector Store** capaz de almacenar los embeddings generados por OpenAI (1536 dimensiones) y realizar búsquedas de similitud en milisegundos usando el algoritmo HNSW. |
-| **Adminer** (Opcional) | `adminer` | Interfaz web ligera para visualizar directamente los vectores y embeddings generados dentro de las tablas de bases de datos. |
-
-## 🛠️ Stack Tecnológico
-
-| Componente | Tecnología | Versión |
-| :--- | :--- | :--- |
-| **Lenguaje** | Java | 21 |
-| **Framework** | Spring Boot | 3.4.x |
-| **Base de Datos** | PostgreSQL (Diferenciado con pgvector) | 16 |
-| **IA Chat / RAG** | OpenAI (GPT-4o-mini) | Spring AI 1.0.0-M5 |
-| **Embeddings** | OpenAI (text-embedding-3-small) | 1536 dims |
-| **IA Visual** | OpenAI DALL-E 3 (ImageModel) | 1024x1024 |
-| **UI Styling** | Tailwind CSS | 3.x |
-
-## 🔌 Diseño de la API REST
-
-**URL Base**: `http://localhost:8080/api/v1`
-
-| Recurso | Método | Endpoint | Descripción |
-| :--- | :--- | :--- | :--- |
-| **Documentos** | GET | `/documents` | Listar todos los documentos indexados |
-| **Importación** | POST | `/documents/import-text` | Ingesta de texto plano directa |
-| **Upload** | POST | `/documents/upload` | Carga de archivos (PDF, MD, TXT) |
-| **Jobs** | GET | `/ingestion-jobs/{id}` | Estado del proceso de ingesta |
-| **Preguntas** | POST | `/questions/ask` | Consulta RAG sobre los documentos |
-
-### Detalles de Request/Response
-
-#### 1. Ingesta de Texto (`/documents/import-text`)
-- **Request (JSON)**:
-  ```json
-  {
-    "title": "Título del doc",
-    "content": "Contenido extenso...",
-    "sourceType": "TEXT"
-  }
-  ```
-- **Response (JSON)**: Objeto `Document` con ID y estado `PENDING`.
-
-#### 2. Carga de Archivos (`/documents/upload`)
-- **Request (Multipart)**: Campo `file` (binario), `title` (string).
-- **Response (JSON)**:
-  ```json
-  {
-    "jobId": "uuid",
-    "status": "ACCEPTED",
-    "trackingUrl": "/api/v1/ingestion-jobs/..."
-  }
-  ```
-
-#### 3. Consulta RAG (`/questions/ask`)
-- **Request (JSON)**:
-  ```json
-  {
-    "question": "¿Qué dice el documento sobre X?",
-    "maxChunks": 5
-  }
-  ```
-- **Response (JSON)**:
-  ```json
-  {
-    "question": "repregunta",
-    "answer": "Respuesta generada por OpenAI GPT 4o-mini...",
-    "sources": ["doc_id_1", "doc_id_2"],
-    "chunksAnalyzed": 5,
-    "imageUrl": "https://oaidalleapiprodscus..."
-  }
-  ```
-
-## 🔍 Monitoreo y Documentación Interactiva
-
-- **Swagger UI**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) (Para probar los endpoints visualmente).
-- **Health Check**: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health) (Estado de la app y DB).
-- **API Docs**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) (Esquema OpenAPI).
-
-## 🔐 Seguridad (Modo Demo)
-
-Por defecto, la aplicación incluye **Spring Security**. Para facilitar la demo:
-- **Usuario**: `user`
-- **Contraseña**: Se genera aleatoriamente en la consola al iniciar (busca: `Using generated security password`).
-- **Nota**: Se recomienda añadir un `WebSecurityCustomizer` para liberar los recursos estáticos si la UI se bloquea.
-
 
 ## 📉 Pipelines (Flujos de Proceso)
 
@@ -157,30 +78,27 @@ Por defecto, la aplicación incluye **Spring Security**. Para facilitar la demo:
 ```mermaid
 graph LR
     A[Archivo/Texto] --> B[Apache Tika]
-    B --> C[Text Chunking]
-    C --> D[OpenAI Embedding]
+    B --> C[Text Chunking 200 Tokens]
+    C --> D[OpenAI Embedding 1536d]
     D --> E[PostgreSQL pgvector]
     E --> F[Estado: COMPLETED]
 ```
 
-### Tubería de Consulta RAG + Visual (MULTIMODAL)
+### Tubería Multimodal (RAG + Visión)
 ```mermaid
 graph TD
     User([Usuario]) --> Q[Pregunta]
     Q --> Emb[OpenAI Embedding]
     Emb --> Search[Vector Search pgvector]
-    Search --> Context[Contexto Recuperado]
+    Search --> Context[Contexto Recuperado Top-K]
     Context --> Prompt[RAG Prompt Engineering]
     Prompt --> Gen[OpenAI GPT-4o-mini]
-    Gen --> Answer[Respuesta con Fuentes]
-    Answer --> Visual[Visual Transformation: DALL-E 3]
-    Visual --> Output[Respuesta + Imagen Generada 🎨]
+    Gen --> Answer[Respuesta Textual]
+    Answer --> Visual[Visual Prompt -> DALL-E 3]
+    Visual --> Output[UI: Respuesta + Imagen Generada 🎨]
     Output --> User
 ```
 
-## 🚀 Pasos para Ejecutar
-
-1. **Levantar Infraestructura**: `docker-compose up -d` (Esto levantará el contenedor de pgvector necesario para el vector store).
-2. **Configurar API Key**: Configura tu variable de entorno `OPENAI_API_KEY` o añádela en `application.yaml` (`spring.ai.openai.api-key`).
-3. **Compilar y Ejecutar**: `./mvnw spring-boot:run -Dmaven.test.skip=true`
-4. **Acceder a la Web**: Ingresa a `http://localhost:8080` para disfrutar de la UI.
+## 🔐 Seguridad y Notas de Demo
+- **Usuario web**: `user`
+- **Contraseña**: Revisa la terminal de Java al iniciar (`Using generated security password...`)
