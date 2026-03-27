@@ -83,7 +83,10 @@ public class ChunkService {
         double[][] projected = pcaService.projectTo3D(matrix);
 
         // 2. Clustering (KMeans++ con k dinámico)
-        int k = Math.min(6, Math.max(2, rawData.size() / 15));
+        // Escalado más agresivo para que en demos pequeñas (3-10 chunks) se vean los grupos (k=3+)
+        int k = Math.min(10, Math.max(2, (int) Math.ceil(rawData.size() / 5.0)));
+        if (rawData.size() <= 3) k = rawData.size(); // Si hay 3 chunks de 3 temas, queremos 3 grupos
+        
         int[] clusterAssignments = clusteringService.cluster(projected, k);
 
         // 3. Agrupar contenidos por cluster para nombres descriptivos

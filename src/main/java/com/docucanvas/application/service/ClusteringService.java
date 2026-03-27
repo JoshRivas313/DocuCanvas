@@ -48,17 +48,28 @@ public class ClusteringService {
         for (int i = 0; i < clusters.size(); i++) {
             CentroidCluster<DoublePoint> cluster = clusters.get(i);
             for (DoublePoint point : cluster.getPoints()) {
-                // Buscamos el punto original para asignar el ID (O(n^2) simplificado para demo)
+                double[] pCoords = point.getPoint();
+                // Buscamos el índice original del punto
                 for (int j = 0; j < data.length; j++) {
-                    if (Arrays.equals(data[j], point.getPoint())) {
+                    if (isSamePoint(data[j], pCoords)) {
                         assignments[j] = i;
+                        break;
                     }
                 }
             }
         }
 
-        log.info("Clustering completado");
+        log.info("Clustering completado. Clusters generados: {}", clusters.size());
         return assignments;
+    }
+
+    private boolean isSamePoint(double[] a, double[] b) {
+        if (a.length != b.length) return false;
+        double threshold = 1e-9;
+        for (int i = 0; i < a.length; i++) {
+            if (Math.abs(a[i] - b[i]) > threshold) return false;
+        }
+        return true;
     }
 
     public String getColor(int clusterIndex) {
