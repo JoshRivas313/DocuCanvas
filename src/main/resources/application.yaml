@@ -3,7 +3,7 @@ spring:
     name: docu-canvas
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY:sk-proj-reemplazame}
+      api-key: ${OPENAI_API_KEY:OPENAI_KEY_REMOVED}
       chat:
         options:
           model: gpt-4o-mini
