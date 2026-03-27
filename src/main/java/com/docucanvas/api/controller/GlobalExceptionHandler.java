@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.net.URI;
 import java.time.Instant;
@@ -23,6 +24,16 @@ import java.time.Instant;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /**
+     * Recursos estáticos no encontrados (favicon.ico, etc.) → 404 silencioso.
+     * Evita ERROR ruidoso en los logs durante la demo.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResourceFound(NoResourceFoundException ex) {
+        log.debug("Recurso estático no encontrado (ignorado): {}", ex.getResourcePath());
+        return ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+    }
 
     /**
      * Captura errores de validación de parámetros (@Valid en los controllers).
