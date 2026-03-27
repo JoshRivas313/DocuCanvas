@@ -45,10 +45,10 @@ public class ImageGenerationService {
         log.debug("Visual prompt generado ({} caracteres): {}", visualPrompt.length(), visualPrompt);
 
         // 3. Opciones explícitas: calidad HD para la demo en vivo
+        // Nota: n=1 ya está configurado en application.yaml (spring.ai.openai.image.options.n)
         ImageOptions options = OpenAiImageOptions.builder()
                 .model("dall-e-3")
                 .quality("hd")
-                .n(1)
                 .height(1024)
                 .width(1024)
                 .build();
