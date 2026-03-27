@@ -67,6 +67,7 @@
                     });
                     return Object.keys(counts).map(name => ({
                         name: name,
+                        description: firstChunks[name].clusterDescription,
                         count: counts[name],
                         color: firstChunks[name].clusterColor,
                         preview: firstChunks[name].content.substring(0, 45).replace(/\n/g, ' ')
@@ -245,9 +246,36 @@
                         paper_bgcolor: 'rgba(0,0,0,0)',
                         showlegend: false,
                         scene: {
-                            xaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.02)', zeroline: false, showticklabels: false, title: '' },
-                            yaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.02)', zeroline: false, showticklabels: false, title: '' },
-                            zaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.02)', zeroline: false, showticklabels: false, title: '' },
+                            xaxis: { 
+                                showgrid: true, 
+                                gridcolor: 'rgba(255,255,255,0.05)', 
+                                zeroline: true, 
+                                zerolinecolor: 'rgba(56, 189, 248, 0.2)',
+                                showbackground: true,
+                                backgroundcolor: 'rgba(15, 23, 42, 0.5)',
+                                title: { text: 'Dim 1', font: { size: 10, color: '#64748b' } },
+                                showticklabels: false
+                            },
+                            yaxis: { 
+                                showgrid: true, 
+                                gridcolor: 'rgba(255,255,255,0.05)', 
+                                zeroline: true, 
+                                zerolinecolor: 'rgba(56, 189, 248, 0.2)',
+                                showbackground: true,
+                                backgroundcolor: 'rgba(15, 23, 42, 0.5)',
+                                title: { text: 'Dim 2', font: { size: 10, color: '#64748b' } },
+                                showticklabels: false
+                            },
+                            zaxis: { 
+                                showgrid: true, 
+                                gridcolor: 'rgba(255,255,255,0.05)', 
+                                zeroline: true, 
+                                zerolinecolor: 'rgba(56, 189, 248, 0.2)',
+                                showbackground: true,
+                                backgroundcolor: 'rgba(15, 23, 42, 0.5)',
+                                title: { text: 'Dim 3', font: { size: 10, color: '#64748b' } },
+                                showticklabels: false
+                            },
                             bgcolor: '#020617',
                             camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
                         }
@@ -267,6 +295,15 @@
 
                 selectChunk(chunk) {
                     this.selectedChunkId = chunk.id;
+                    const plotDiv = document.getElementById('plotly-3d-map');
+                    if (plotDiv && chunk.coordinates) {
+                        const [x, y, z] = chunk.coordinates;
+                        // Mover la cámara para focalizar el punto
+                        Plotly.relayout(plotDiv, {
+                            'scene.camera.center': { x: x, y: y, z: z },
+                            'scene.camera.eye': { x: x + 1, y: y + 1, z: z + 1 }
+                        });
+                    }
                 },
 
                 handleFileUpload(event) {

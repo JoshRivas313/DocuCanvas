@@ -63,6 +63,8 @@
                     </div>
                 </div>
             </div>
+
+
         </div>
 
         <!-- Contenedor Principal: Mapa 3D (75% en LG) -->
@@ -114,6 +116,36 @@
                 </div>
                 <div class="flex items-center gap-2 text-[8px] text-slate-500 font-bold uppercase tracking-widest">
                     <span class="bg-slate-800 px-1.5 py-0.5 rounded border border-white/10">Scroll</span> Zoom
+                </div>
+            </div>
+
+            <!-- DETALLE DE TEMAS SEMÁNTICOS (Grid inferior) -->
+            <div class="mt-4 space-y-4">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-white/5 pb-2">Desglose de Temas Detectados</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <template x-for="group in clusterGroups" :key="group.name">
+                        <div class="glass p-5 rounded-2xl border-t-4 shadow-xl flex flex-col h-[450px]" :style="'border-color: ' + group.color">
+                            <div class="mb-4 border-b border-white/5 pb-3">
+                                <div class="flex items-center justify-between mb-1">
+                                    <h4 class="text-[10px] font-black uppercase tracking-widest text-white truncate pr-2" x-text="group.name"></h4>
+                                    <span class="text-[9px] bg-white/10 px-2 py-1 rounded-full text-slate-400 font-mono whitespace-nowrap" x-text="group.count + ' chunks'"></span>
+                                </div>
+                                <p class="text-[9px] text-slate-400 leading-tight italic" x-text="group.description"></p>
+                            </div>
+                            
+                            <div class="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                                <template x-for="chunk in filteredChunks.filter(c => c.clusterName === group.name)" :key="chunk.id">
+                                    <div class="bg-slate-900/50 p-3 rounded-xl border border-white/5 hover:border-sky-500/30 transition group cursor-default">
+                                        <p class="text-[10px] text-slate-300 leading-relaxed" x-text="chunk.content"></p>
+                                        <div class="mt-2 flex justify-between items-center opacity-40 group-hover:opacity-100 transition">
+                                            <span class="text-[8px] text-slate-500 font-mono truncate max-w-[120px]" x-text="chunk.documentName"></span>
+                                            <button @click="selectChunk(chunk)" class="text-[8px] text-sky-400 font-bold hover:underline underline-offset-2">FOCALIZAR</button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>

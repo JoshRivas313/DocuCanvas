@@ -95,9 +95,9 @@ public class ChunkService {
             clusterContents.computeIfAbsent(clusterAssignments[i], v -> new ArrayList<>()).add(rawData.get(i).content);
         }
         
-        Map<Integer, String> clusterNames = new HashMap<>();
+        Map<Integer, ClusteringService.ClusterMetadata> clusterMeta = new HashMap<>();
         for (int i = 0; i < k; i++) {
-            clusterNames.put(i, clusteringService.generateClusterName(i, clusterContents.getOrDefault(i, List.of())));
+            clusterMeta.put(i, clusteringService.generateClusterMetadata(i, clusterContents.getOrDefault(i, List.of())));
         }
 
         // 4. Construir DTOs
@@ -105,13 +105,15 @@ public class ChunkService {
         for (int i = 0; i < rawData.size(); i++) {
             RawChunkData raw = rawData.get(i);
             int clusterIdx = clusterAssignments[i];
+            ClusteringService.ClusterMetadata meta = clusterMeta.get(clusterIdx);
             
             result.add(new ChunkDTO(
                     raw.id,
                     truncateContent(raw.content),
                     Arrays.stream(projected[i]).boxed().toList(),
                     raw.docName != null ? raw.docName : "Desconocido",
-                    clusterNames.get(clusterIdx),
+                    meta.name(),
+                    meta.description(),
                     clusteringService.getColor(clusterIdx)
             ));
         }

@@ -84,37 +84,48 @@ public class ClusteringService {
     /**
      * Genera un nombre descriptivo simple para el cluster basado en su contenido.
      */
-    public String generateClusterName(int index, List<String> contents) {
-        if (contents.isEmpty()) return "Grupo " + index;
+    public record ClusterMetadata(String name, String description) {}
+
+    public ClusterMetadata generateClusterMetadata(int index, List<String> contents) {
+        if (contents.isEmpty()) return new ClusterMetadata("Grupo " + index, "Sin contenido");
         
         try {
-            // Tomamos una muestra de los primeros 3 fragmentos para el análisis
             String sample = contents.stream()
                     .limit(3)
                     .map(s -> s.substring(0, Math.min(s.length(), 200)))
                     .collect(Collectors.joining("\n--- \n"));
 
-            String topic = chatClient.prompt()
-                    .system("Eres un clasificador de temas. Responde solo con una o dos palabras que definan el tema.")
-                    .user("Define el tema central de estos fragmentos:\n" + sample)
+            String response = chatClient.prompt()
+                    .system("Eres un experto en taxonomía. Analiza los fragmentos y responde exactamente en este formato:\n" +
+                            "Nombre: [1-2 palabras]\n" +
+                            "Descripción: [Una oración breve y profesional sobre el contenido]")
+                    .user("Analiza estos fragmentos:\n" + sample)
                     .call()
                     .content();
 
-            // Limpieza del resultado
-            topic = topic.replaceAll("[^a-zA-ZáéíóúÁÉÍÓÚ\\s]", "").trim();
-            if (topic.length() > 25) topic = topic.substring(0, 25);
-            if (topic.isEmpty()) return fallbackClusterName(index, contents);
+            String name = extractField(response, "Nombre:").replaceAll("[^a-zA-ZáéíóúÁÉÍÓÚ\\s]", "").trim();
+            String description = extractField(response, "Descripción:").trim();
 
-            String capitalized = topic.substring(0, 1).toUpperCase() + topic.substring(1).toLowerCase();
-            return "Grupo " + index + ": " + capitalized;
+            if (name.isEmpty()) return fallbackMetadata(index, contents);
+            
+            String capitalized = name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase();
+            return new ClusterMetadata("Grupo " + index + ": " + capitalized, description);
 
         } catch (Exception e) {
-            log.warn("Fallo en IA para nombrar cluster {}, usando heurístico", index);
-            return fallbackClusterName(index, contents);
+            log.warn("Fallo en IA para metadatos de cluster {}, usando fallback", index);
+            return fallbackMetadata(index, contents);
         }
     }
 
-    private String fallbackClusterName(int index, List<String> contents) {
+    private String extractField(String text, String label) {
+        int start = text.indexOf(label);
+        if (start == -1) return "";
+        int end = text.indexOf("\n", start + label.length());
+        if (end == -1) end = text.length();
+        return text.substring(start + label.length(), end).trim();
+    }
+
+    private ClusterMetadata fallbackMetadata(int index, List<String> contents) {
         String longestWord = Arrays.stream(contents.get(0).split("\\s+"))
                 .map(s -> s.replaceAll("[^a-zA-ZáéíóúÁÉÍÓÚ]", ""))
                 .filter(s -> s.length() > 4)
@@ -122,6 +133,6 @@ public class ClusteringService {
                 .orElse("Tema " + index);
                 
         String capitalized = longestWord.substring(0, 1).toUpperCase() + longestWord.substring(1).toLowerCase();
-        return "Grupo " + index + ": " + capitalized;
+        return new ClusterMetadata("Grupo " + index + ": " + capitalized, "Fragmentos relacionados con " + capitalized.toLowerCase() + ".");
     }
 }

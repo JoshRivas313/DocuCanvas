@@ -8,6 +8,7 @@ public record ChunkDTO(
     List<Double> coordinates, 
     String documentName,
     String clusterName,
+    String clusterDescription,
     String clusterColor
 ) {
 }
