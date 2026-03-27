@@ -20,10 +20,77 @@ DocuCanvas es una plataforma de consulta inteligente sobre documentos que utiliz
 | **Spring AI** | 1.0.0-M5 | Abstracciones consistentes para modelos de IA sin vendor lock-in. |
 | **OpenAI** | Latest | Modelos GPT-4o-mini y DALL-E 3 para razonamiento y visión. |
 | **PGVector** | 16 | Extensión de PostgreSQL para búsqueda vectorial nativa con SQL. |
+| **Docker** | 25.x+ | Orquestación de servicios e infraestructura persistente. |
 | **Apache Tika** | 3.0.0 | Extracción universal de texto de casi cualquier formato (PDF, DOCX). |
 | **Alpine.js** | 3.x | Reactividad ligera para la interfaz web. |
 | **Plotly.js** | 2.32.0 | Visualización 3D interactiva de los vectores de embedding. |
-| **Tailwind CSS** | 3.x | Diseño moderno, oscuro y responsivo "mobile-first". |
+
+---
+
+## 🐳 Infraestructura Docker
+
+La aplicación utiliza un entorno pre-configurado mediante **Docker Compose** para garantizar que la base de datos vectorial esté lista sin configuraciones manuales complejas.
+
+### Contenedores en Uso: 1
+1. **`docucanvas-db` (ankane/pgvector)**:
+   - **Motivo**: Es el corazón del sistema RAG. Provee una instancia de PostgreSQL 16 con la extensión `vector` preinstalada. Esto permite almacenar los embeddings de 1536 dimensiones generados por OpenAI y realizar búsquedas de similitud (distancia de coseno/L2) mediante consultas SQL optimizadas.
+
+---
+
+## 🔌 Diseño de API (Visual)
+
+A continuación se detalla la estructura de los endpoints principales mediante diagramas de flujo de datos (Request ➔ Response).
+
+### 1. Consulta RAG Multimodal
+**Endpoint:** `POST /api/v1/questions/ask`
+
+```mermaid
+graph LR
+    subgraph Request
+        A[question: String]
+        B[maxChunks: Integer]
+        C[documentId: UUID]
+    end
+    Request --> API((/ask))
+    API --> Response
+    subgraph Response
+        D[answer: String]
+        E[sources: List]
+        F[imageUrl: URL]
+    end
+```
+
+### 2. Ingesta de Documentos (Upload)
+**Endpoint:** `POST /api/v1/documents/upload`
+
+```mermaid
+graph LR
+    subgraph Request
+        A[file: MultipartFile]
+        B[title: String]
+    end
+    Request --> API((/upload))
+    API --> Response
+    subgraph Response
+        C[jobId: UUID]
+        D[status: PROCESSING]
+        E[statusUrl: String]
+    end
+```
+
+### 3. Visualización de Espacio Latente
+**Endpoint:** `GET /api/v1/chunks/visualize`
+
+```mermaid
+graph LR
+    API((/visualize)) --> Response
+    subgraph Response
+        A[id: String]
+        B[content: String]
+        C[coordinates: List-Double]
+        D[documentName: String]
+    end
+```
 
 ---
 
