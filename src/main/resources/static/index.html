@@ -495,108 +495,107 @@
 
                 render3DMap() {
                     const hasData = this.chunksData && this.chunksData.length > 0;
+                    
+                    if (!hasData) {
+                        const emptyLayout = {
+                            margin: { l: 0, r: 0, b: 0, t: 0 },
+                            paper_bgcolor: 'rgba(0,0,0,0)',
+                            scene: {
+                                xaxis: { visible: false },
+                                yaxis: { visible: false },
+                                zaxis: { visible: false },
+                                annotations: [{
+                                    x: 0, y: 0, z: 0,
+                                    text: "Sube un documento primero para visualizar el espacio latente",
+                                    showarrow: false,
+                                    font: { color: '#94a3b8', size: 14 }
+                                }]
+                            }
+                        };
+                        Plotly.newPlot('plotly-3d-map', [], emptyLayout, { responsive: true });
+                        return;
+                    }
 
-                    const trace = {
-                        x: hasData ? this.chunksData.map(c => c.coordinates[0]) : [],
-                        y: hasData ? this.chunksData.map(c => c.coordinates[1]) : [],
-                        z: hasData ? this.chunksData.map(c => c.coordinates[2]) : [],
-                        text: hasData ? this.chunksData.map(c => c.content) : [],
-                        mode: 'markers',
-                        marker: {
-                            size: hasData ? 8 : 0.1,
-                            color: hasData ? this.chunksData.map(c => c.coordinates[0]) : [], // Color by x for gradient
-                            colorscale: 'Viridis',
-                            opacity: 0.8
-                        },
-                        type: 'scatter3d',
-                        hoverinfo: 'text'
-                    };
+                    // Agrupar por documento para crear leyendas y colores automáticos
+                    const groups = {};
+                    this.chunksData.forEach(c => {
+                        const name = c.documentName || 'Desconocido';
+                        if (!groups[name]) groups[name] = [];
+                        groups[name].push(c);
+                    });
+
+                    const traces = Object.keys(groups).map(name => {
+                        const chunks = groups[name];
+                        return {
+                            name: name.length > 20 ? name.substring(0, 17) + '...' : name,
+                            fullName: name,
+                            x: chunks.map(c => c.coordinates[0]),
+                            y: chunks.map(c => c.coordinates[1]),
+                            z: chunks.map(c => c.coordinates[2]),
+                            text: chunks.map(c => c.content),
+                            ids: chunks.map(c => c.id),
+                            mode: 'markers',
+                            marker: {
+                                size: 8,
+                                opacity: 0.8,
+                                line: { color: 'rgba(255,255,255,0.2)', width: 0.5 }
+                            },
+                            type: 'scatter3d',
+                            hoverinfo: 'name+text'
+                        };
+                    });
 
                     const layout = {
                         margin: { l: 0, r: 0, b: 0, t: 0 },
                         paper_bgcolor: 'rgba(0,0,0,0)',
+                        showlegend: true,
+                        legend: {
+                            font: { color: '#94a3b8', size: 10 },
+                            bgcolor: 'rgba(15, 23, 42, 0.7)',
+                            bordercolor: 'rgba(255,255,255,0.1)',
+                            borderwidth: 1,
+                            x: 0.85,
+                            y: 0.95
+                        },
                         scene: {
-                            xaxis: { showbackground: false, color: '#f8fafc', gridcolor: '#1e293b' },
-                            yaxis: { showbackground: false, color: '#f8fafc', gridcolor: '#1e293b' },
-                            zaxis: { showbackground: false, color: '#f8fafc', gridcolor: '#1e293b' }
+                            xaxis: { title: '', color: '#475569', gridcolor: '#1e293b', zerolinecolor: '#1e293b' },
+                            yaxis: { title: '', color: '#475569', gridcolor: '#1e293b', zerolinecolor: '#1e293b' },
+                            zaxis: { title: '', color: '#475569', gridcolor: '#1e293b', zerolinecolor: '#1e293b' },
+                            bgcolor: '#0f172a',
+                            camera: {
+                                eye: {x: 1.5, y: 1.5, z: 1.2}
+                            }
                         }
                     };
 
-                    if (!hasData) {
-                        layout.scene.annotations = [{
-                            x: 0, y: 0, z: 0,
-                            text: "Sube un documento primero para visualizar el espacio latente",
-                            showarrow: false,
-                            font: { color: '#94a3b8', size: 14 }
-                        }];
-                    }
-
-                    Plotly.newPlot('plotly-3d-map', [trace], layout, { responsive: true });
-                },
-
-                async performSearch() {
-                    if (!this.searchQuery) return this.resetSearch();
-                    this.selectedDocument = ''; // Clear doc filter
-                    this.isSearching = true;
-                    try {
-                        const res = await fetch(`/api/v1/chunks/search?query=${encodeURIComponent(this.searchQuery)}`);
-                        if (res.ok) {
-                            this.highlightedChunkIds = await res.json();
-                            this.update3DMapHighlight();
-                        }
-                    } catch (e) {
-                        console.error('Error searching chunks', e);
-                    } finally {
-                        this.isSearching = false;
-                    }
-                },
-
-                filterByDocument() {
-                    if (!this.selectedDocument) {
-                        this.resetSearch();
-                        return;
-                    }
-                    this.searchQuery = ''; // Clear text search
-                    this.highlightedChunkIds = this.chunksData
-                        .filter(c => c.documentName === this.selectedDocument)
-                        .map(c => c.id);
-                    this.update3DMapHighlight();
-                },
-
-                resetSearch() {
-                    this.searchQuery = '';
-                    this.selectedDocument = '';
-                    this.highlightedChunkIds = [];
-                    this.update3DMapHighlight();
+                    Plotly.newPlot('plotly-3d-map', traces, layout, { responsive: true });
                 },
 
                 update3DMapHighlight() {
-                    if (this.chunksData.length === 0) return;
+                    const plot = document.getElementById('plotly-3d-map');
+                    if (!plot || !plot.data || plot.data.length === 0) return;
 
-                    let colors, opacities, sizes, scale;
-                    if (this.highlightedChunkIds.length > 0) {
-                        colors = this.chunksData.map(c => this.highlightedChunkIds.includes(c.id) ? '#f43f5e' : '#334155'); // Rose-500 vs Slate-700
-                        opacities = this.chunksData.map(c => this.highlightedChunkIds.includes(c.id) ? 1.0 : 0.1);
-                        sizes = this.chunksData.map(c => this.highlightedChunkIds.includes(c.id) ? 16 : 5);
-                        scale = null; // Remove colorscale to use exact colors
-                    } else {
-                        colors = this.chunksData.map(c => c.coordinates[0]);
-                        opacities = 0.8;
-                        sizes = 8;
-                        scale = 'Viridis';
-                    }
+                    const isFiltering = this.highlightedChunkIds.length > 0;
+                    
+                    // Iterar sobre cada traza (documento) para aplicar el highlight individualmente
+                    plot.data.forEach((trace, index) => {
+                        let opacities, sizes, colors;
+                        
+                        if (isFiltering) {
+                            // Si estamos filtrando, solo resaltamos los IDs que coinciden
+                            opacities = trace.ids.map(id => this.highlightedChunkIds.includes(id) ? 1.0 : 0.05);
+                            sizes = trace.ids.map(id => this.highlightedChunkIds.includes(id) ? 14 : 4);
+                        } else {
+                            // Restaurar vista original
+                            opacities = 0.8;
+                            sizes = 8;
+                        }
 
-                    const update = {
-                        'marker.color': [colors],
-                        'marker.opacity': [opacities],
-                        'marker.size': [sizes]
-                    };
-
-                    if (scale !== null) {
-                        update['marker.colorscale'] = scale;
-                    }
-
-                    Plotly.restyle('plotly-3d-map', update);
+                        Plotly.restyle('plotly-3d-map', {
+                            'marker.opacity': [opacities],
+                            'marker.size': [sizes]
+                        }, [index]);
+                    });
                 },
 
                 async ingestText() {
