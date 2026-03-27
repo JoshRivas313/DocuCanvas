@@ -1,23 +1,58 @@
 package com.docucanvas.application.service;
 
+import org.springframework.ai.image.ImageOptions;
 import org.springframework.ai.image.ImagePrompt;
+import org.springframework.ai.openai.OpenAiImageOptions;
 import org.springframework.stereotype.Service;
 
+/**
+ * Servicio responsable de transformar la respuesta textual del LLM en un
+ * prompt optimizado para generación de imágenes con DALL-E (ImageModel).
+ *
+ * <p>Este es el puente entre la fase RAG y la fase visual del pipeline.
+ */
 @Service
 public class ImageGenerationService {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ImageGenerationService.class);
-    
-    public ImagePrompt generateImagePrompt(String lLMAnswer) {
-        log.info("Generando ImagePrompt visual para la respuesta de RAG");
-        
-        // Transformamos la respuesta densa del LLM en un prompt visual corto (Prompt Engineering dinámico)
-        String baseTexto = lLMAnswer.length() > 200 ? lLMAnswer.substring(0, 200) : lLMAnswer;
-        String visualPrompt = "Crea un diagrama de arquitectura inspirado en esto: " + baseTexto;
-        
-        log.debug("Visual prompt generado: {}", visualPrompt);
 
-        // Devolvemos el prompt de imagen listo para ser ejecutado
-        return new ImagePrompt(visualPrompt);
+    // Máximo de caracteres de contexto que enviamos al modelo de imagen
+    private static final int MAX_CONTEXT_LENGTH = 300;
+
+    /**
+     * Genera un {@link ImagePrompt} altamente contextualizado a partir de la
+     * respuesta producida por el pipeline RAG.
+     *
+     * @param llmAnswer respuesta del LLM enriquecida con contexto documental
+     * @return prompt listo para ser ejecutado por {@link org.springframework.ai.image.ImageModel}
+     */
+    public ImagePrompt generateImagePrompt(String llmAnswer) {
+        log.info("Construyendo ImagePrompt visual a partir de la respuesta RAG");
+
+        // 1. Extraemos el fragmento más representativo de la respuesta
+        String contexto = llmAnswer.length() > MAX_CONTEXT_LENGTH
+                ? llmAnswer.substring(0, MAX_CONTEXT_LENGTH)
+                : llmAnswer;
+
+        // 2. Prompt engineering dinámico: contexto + estilo profesional para la demo
+        String visualPrompt = String.format(
+                "Ilustración técnica profesional y minimalista que represente visualmente "
+              + "los siguientes conceptos: %s. "
+              + "Estilo: infografía moderna con íconos planos, paleta azul y blanca, "
+              + "tipografía sans-serif, fondo blanco limpio, sin texto en la imagen.",
+                contexto);
+
+        log.debug("Visual prompt generado ({} caracteres): {}", visualPrompt.length(), visualPrompt);
+
+        // 3. Opciones explícitas: calidad HD para la demo en vivo
+        ImageOptions options = OpenAiImageOptions.builder()
+                .model("dall-e-3")
+                .quality("hd")
+                .n(1)
+                .height(1024)
+                .width(1024)
+                .build();
+
+        return new ImagePrompt(visualPrompt, options);
     }
 }
