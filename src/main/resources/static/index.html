@@ -25,7 +25,19 @@
         .gradient-text {
             background: linear-gradient(90deg, #38bdf8, #818cf8);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.3);
+            border-radius: 10px;
         }
 
         [x-cloak] {
@@ -49,7 +61,7 @@
 
     <!-- Header -->
     <header class="p-6 border-b border-white/5 glass sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <div class="max-w-[90vw] mx-auto flex justify-between items-center">
             <h1 class="text-2xl font-bold gradient-text">DocuCanvas</h1>
             <div class="flex gap-4">
 
@@ -73,7 +85,7 @@
         </div>
     </header>
 
-    <main class="max-w-5xl mx-auto p-6 mt-8">
+    <main class="max-w-[90vw] mx-auto p-6 mt-8">
 
         <!-- Vista: Upload -->
         <div x-show="view === 'upload'" x-transition x-cloak>
@@ -323,110 +335,125 @@
             </div>
         </div>
 
-        <!-- Vista: Chunks Explorer (Viral Edition) -->
+        <!-- Vista: Chunks Explorer (Epic Edition) -->
         <div x-show="view === 'chunks'" x-transition x-cloak>
-            <div class="flex flex-col lg:flex-row gap-6 h-[75vh]">
+            <div class="flex flex-col lg:flex-row gap-6">
                 
-                <!-- Sidebar de Estadísticas -->
-                <div class="w-full lg:w-64 glass p-6 rounded-2xl flex flex-col gap-6 order-2 lg:order-1">
-                    <div>
-                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">📊 Estadísticas</h3>
-                        <div class="space-y-4">
-                            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
-                                <p class="text-xs text-slate-400">Total Chunks</p>
-                                <p class="text-2xl font-bold text-sky-400" x-text="chunksData.length">0</p>
-                            </div>
-                            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
-                                <p class="text-xs text-slate-400">Clusters Detectados</p>
-                                <p class="text-2xl font-bold text-indigo-400" x-text="new Set(chunksData.map(c => c.clusterName)).size">0</p>
-                            </div>
-                            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
-                                <p class="text-xs text-slate-400">Densidad Semántica</p>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <div class="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                                        <div class="h-full bg-gradient-to-r from-sky-500 to-indigo-500" :style="'width: ' + (Math.min(100, chunksData.length / 2)) + '%'"></div>
-                                    </div>
-                                    <span class="text-[10px] font-bold text-sky-400">Alta</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-auto pt-6 border-t border-white/5">
-                        <p class="text-[10px] text-slate-500 italic leading-relaxed">
-                            "La cercanía física de los puntos indica similitud conceptual detectada por OpenAI."
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Contenedor Principal: Mapa y Filtros -->
-                <div class="flex-1 flex flex-col gap-4 order-1 lg:order-2">
+                <!-- Sidebar Unificado (25% en LG) -->
+                <div class="w-full lg:w-1/4 flex flex-col gap-6">
                     
-                    <!-- Top Bar Filtros -->
-                    <div class="glass p-4 rounded-2xl flex flex-wrap gap-4 items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <span class="text-lg">📁</span>
+                    <!-- Panel de Control y Filtros -->
+                    <div class="glass p-5 rounded-2xl space-y-4">
+                        <div class="flex items-center gap-3 border-b border-white/5 pb-3">
+                            <span class="text-xl">📁</span>
                             <select x-model="selectedDocument" @change="render3DMap()"
-                                class="bg-transparent border-none text-sky-400 font-bold outline-none cursor-pointer text-sm min-w-[200px]">
-                                <option value="" class="bg-slate-900 text-white">Todos los documentos</option>
+                                class="bg-transparent border-none text-sky-400 font-bold outline-none cursor-pointer text-sm flex-1">
+                                <option value="" class="bg-slate-900 text-white">Todos los contenidos</option>
                                 <template x-for="doc in uniqueDocuments" :key="doc">
                                     <option :value="doc" x-text="doc" class="bg-slate-900 text-white"></option>
                                 </template>
                             </select>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button @click="fetchChunks()" class="p-2 hover:bg-white/10 rounded-lg transition" title="Refrescar">
-                                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
-                            </button>
+
+                        <!-- Estadísticas Rápidas -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                                <p class="text-[10px] text-slate-500 uppercase font-bold">Total</p>
+                                <p class="text-xl font-bold text-sky-400" x-text="filteredChunks.length">0</p>
+                            </div>
+                            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                                <p class="text-[10px] text-slate-500 uppercase font-bold">Temas</p>
+                                <p class="text-xl font-bold text-indigo-400" x-text="clusterGroups.length">0</p>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Plotly Canvas -->
-                    <div class="flex-1 glass rounded-2xl relative overflow-hidden group">
-                        <div x-show="loadingChunks"
-                            class="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-20 backdrop-blur-sm">
-                            <div class="flex flex-col items-center gap-4">
-                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
-                                <p class="text-sky-400 font-bold animate-pulse">Calculando Proyección PCA...</p>
-                            </div>
+                    <!-- Leyenda de Clusters (Dynamic Data) -->
+                    <div class="glass p-5 rounded-2xl flex-1 flex flex-col min-h-[40vh]">
+                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 text-slate-500">🏷️ Temas Detectados</h3>
+                        <div class="space-y-3 overflow-y-auto pr-2 max-h-[35vh]">
+                            <template x-for="group in clusterGroups" :key="group.name">
+                                <div class="flex flex-col gap-1 p-2 rounded-lg hover:bg-white/5 transition group cursor-default shadow-sm border border-transparent hover:border-white/5">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]" :style="'background-color: ' + group.color"></span>
+                                            <span class="text-xs font-bold text-slate-200" x-text="group.name"></span>
+                                        </div>
+                                        <span class="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-slate-400 font-mono" x-text="group.count"></span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 italic truncate pl-4" x-text="'&quot;' + group.preview + '...&quot;'"></p>
+                                </div>
+                            </template>
                         </div>
-                        <div id="plotly-3d-map" class="w-full h-full"></div>
-                        
-                        <!-- Mini Inspector (Hover Info Overlay) -->
-                        <div x-show="hoveredChunk" x-transition 
-                            class="absolute bottom-6 right-6 glass p-4 rounded-xl max-w-xs border-sky-500/50 shadow-2xl z-30 pointer-events-none">
-                            <p class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-1" x-text="hoveredChunk.clusterName"></p>
-                            <p class="text-xs text-slate-200 italic" x-text="'&quot;' + hoveredChunk.content.substring(0, 120) + '...&quot;'"></p>
+
+                        <!-- Lista de Chunks (Mini Inspector) -->
+                        <div class="mt-6 pt-6 border-t border-white/5 flex-1 min-h-0 flex flex-col">
+                            <h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">📄 Fragmentos del Mapa</h3>
+                            <div class="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                                <template x-for="chunk in filteredChunks" :key="chunk.id">
+                                    <div @click="selectChunk(chunk)" 
+                                        :class="selectedChunkId === chunk.id ? 'border-sky-500 bg-sky-900/40 shadow-lg' : 'border-white/5 hover:bg-white/10'"
+                                        class="p-3 border rounded-xl transition cursor-pointer text-[11px] leading-tight">
+                                        <p class="text-slate-300 line-clamp-2" x-text="chunk.content"></p>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Inspector Lateral (Derecha) -->
-                <div class="w-full lg:w-80 glass rounded-2xl flex flex-col order-3">
-                    <div class="p-6 border-b border-white/5 bg-white/5">
-                        <h3 class="text-lg font-bold gradient-text">Inspector de Chunks</h3>
-                        <p class="text-xs text-slate-400">Haz clic en un punto para inspeccionar</p>
-                    </div>
-                    <div class="flex-1 overflow-y-auto p-4 space-y-4">
-                        <template x-for="chunk in filteredChunks" :key="chunk.id">
-                            <div @click="selectChunk(chunk)" 
-                                :class="selectedChunkId === chunk.id ? 'border-sky-500 bg-sky-900/30' : 'border-white/5 hover:bg-white/5'"
-                                class="p-4 border rounded-xl transition cursor-pointer group">
-                                <div class="flex justify-between items-start mb-2">
-                                    <span class="w-3 h-3 rounded-full" :style="'background-color: ' + chunk.clusterColor"></span>
-                                    <span class="text-[10px] text-slate-500 font-mono" x-text="chunk.id.substring(0,8)"></span>
+                <!-- Contenedor Principal: Mapa 3D (75% en LG) -->
+                <div class="flex-1 lg:w-3/4 flex flex-col gap-4">
+                    <div class="glass rounded-3xl relative overflow-hidden group border-2 border-white/5 shadow-2xl" style="height: 80vh;">
+                        <div x-show="loadingChunks"
+                            class="absolute inset-0 flex items-center justify-center bg-slate-900/95 z-20 backdrop-blur-md">
+                            <div class="flex flex-col items-center gap-4">
+                                <div class="relative">
+                                    <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-sky-500"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-xs font-bold text-sky-400">PCA</span>
+                                    </div>
                                 </div>
-                                <p class="text-xs text-slate-300 line-clamp-3" x-text="chunk.content"></p>
-                                
-                                <!-- Acciones Inline -->
-                                <div class="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                                    <button @click.stop="previewText(chunk)" class="bg-slate-700 hover:bg-slate-600 p-1.5 rounded text-[10px]">👁 Ver</button>
-                                    <button @click.stop="generateImageFromChunk(chunk)" class="bg-indigo-600 hover:bg-indigo-500 p-1.5 rounded text-[10px]">🎨 Visualizar</button>
-                                </div>
+                                <p class="text-sky-400 font-bold animate-pulse tracking-widest text-sm uppercase">Analizando Espacio Latente</p>
                             </div>
-                        </template>
-                        <div x-show="filteredChunks.length === 0" class="text-center py-12 text-slate-500 italic text-sm">
-                            No hay fragmentos que most                </div>
+                        </div>
+                        
+                        <!-- El Plotly Canvas -->
+                        <div id="plotly-3d-map" class="w-full h-full"></div>
+                        
+                        <!-- Overlay de Información Flotante -->
+                        <div x-show="hoveredChunk" x-transition 
+                            class="absolute top-6 right-6 glass p-6 rounded-2xl max-w-sm border-sky-500/50 shadow-2xl z-30 pointer-events-none backdrop-blur-xl">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="w-3 h-3 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]" :style="'background-color: ' + hoveredChunk.clusterColor"></span>
+                                <p class="text-xs font-bold text-sky-400 uppercase tracking-widest" x-text="hoveredChunk.clusterName"></p>
+                            </div>
+                            <p class="text-sm text-slate-100 leading-relaxed font-serif italic" x-text="'&quot;' + hoveredChunk.content + '&quot;'"></p>
+                            <div class="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+                                <span class="text-[10px] text-slate-500 font-bold" x-text="hoveredChunk.documentName"></span>
+                            </div>
+                        </div>
+
+                        <!-- Botón Refrescar Flotante -->
+                        <button @click="fetchChunks()" 
+                            class="absolute bottom-6 left-6 p-4 bg-slate-800/90 hover:bg-sky-600 rounded-full transition shadow-xl border border-white/10 group z-30">
+                            <svg class="w-6 h-6 text-white group-hover:rotate-180 transition duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Leyenda Inferior Rápida -->
+                    <div class="flex justify-center gap-10 py-3">
+                        <div class="flex items-center gap-2 text-[10px] text-slate-500 font-bold tracking-widest uppercase">
+                            <span class="bg-slate-800 px-2 py-1 rounded border border-white/10">Click</span> Seleccionar
+                        </div>
+                        <div class="flex items-center gap-2 text-[10px] text-slate-500 font-bold tracking-widest uppercase">
+                            <span class="bg-slate-800 px-2 py-1 rounded border border-white/10">Scroll</span> Zoom
+                        </div>
+                        <div class="flex items-center gap-2 text-[10px] text-slate-500 font-bold tracking-widest uppercase">
+                            <span class="bg-slate-800 px-2 py-1 rounded border border-white/10">Drag</span> Rotar 3D
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -459,8 +486,24 @@
                 },
 
                 get filteredChunks() {
-                    if (!this.selectedDocument) return this.chunksData;
-                    return this.chunksData.filter(c => c.documentName === this.selectedDocument);
+                    const data = this.chunksData || [];
+                    if (!this.selectedDocument) return data;
+                    return data.filter(c => c.documentName === this.selectedDocument);
+                },
+
+                get clusterGroups() {
+                    const counts = {};
+                    const firstChunks = {};
+                    this.filteredChunks.forEach(c => {
+                        counts[c.clusterName] = (counts[c.clusterName] || 0) + 1;
+                        if (!firstChunks[c.clusterName]) firstChunks[c.clusterName] = c;
+                    });
+                    return Object.keys(counts).map(name => ({
+                        name: name,
+                        count: counts[name],
+                        color: firstChunks[name].clusterColor,
+                        preview: firstChunks[name].content.substring(0, 40)
+                    })).sort((a, b) => b.count - a.count);
                 },
 
                 init() {
@@ -507,30 +550,29 @@
                             y: pts.map(p => p.coordinates[1]),
                             z: pts.map(p => p.coordinates[2]),
                             text: pts.map(p => p.content),
-                            ids: pts.map(p => p.id),
                             customData: pts,
                             type: 'scatter3d',
                             mode: 'markers',
                             marker: {
-                                size: 10,
+                                size: 8,
                                 color: pts[0].clusterColor,
-                                opacity: 0.8,
-                                line: { color: 'white', width: 0.5 }
+                                opacity: 0.7,
+                                line: { color: 'rgba(255,255,255,0.1)', width: 0.5 }
                             },
-                            hoverinfo: 'text'
+                            hoverinfo: 'none'
                         };
                     });
 
                     const layout = {
                         margin: { l: 0, r: 0, b: 0, t: 0 },
                         paper_bgcolor: 'rgba(0,0,0,0)',
-                        showlegend: true,
-                        legend: { font: { color: '#94a3b8' }, bgcolor: 'rgba(15,23,42,0.5)' },
+                        showlegend: false,
                         scene: {
-                            xaxis: { showgrid: true, gridcolor: '#1e293b', zeroline: false, showticklabels: false, title: '' },
-                            yaxis: { showgrid: true, gridcolor: '#1e293b', zeroline: false, showticklabels: false, title: '' },
-                            zaxis: { showgrid: true, gridcolor: '#1e293b', zeroline: false, showticklabels: false, title: '' },
-                            bgcolor: '#0f172a'
+                            xaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.03)', zeroline: false, showticklabels: false, title: '' },
+                            yaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.03)', zeroline: false, showticklabels: false, title: '' },
+                            zaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.03)', zeroline: false, showticklabels: false, title: '' },
+                            bgcolor: '#020617',
+                            camera: { eye: { x: 1.8, y: 1.8, z: 1.8 } }
                         }
                     };
 
