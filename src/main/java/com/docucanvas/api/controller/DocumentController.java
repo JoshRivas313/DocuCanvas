@@ -90,12 +90,17 @@ public class DocumentController {
                         case "PDF" -> "application/pdf";
                         case "DOCX" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
                         case "TXT", "TEXT" -> "text/plain";
+                        case "PNG" -> "image/png";
+                        case "JPG", "JPEG" -> "image/jpeg";
+                        case "JSON" -> "application/json";
                         default -> "application/octet-stream";
                     };
                     
                     return ResponseEntity.ok()
                             .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, contentType)
                             .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.getTitle() + "\"")
+                            .header("X-Frame-Options", "SAMEORIGIN")
+                            .header("Content-Security-Policy", "frame-ancestors 'self'")
                             .body(doc.getFileContent());
                 })
                 .orElse(ResponseEntity.notFound().build());

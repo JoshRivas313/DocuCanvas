@@ -46,7 +46,7 @@
                                 class="px-4 py-2 font-bold text-sm">Fragmentos (Chunks)</button>
                         <button @click="indexingSubView = 'preview'" 
                                 :class="indexingSubView === 'preview' ? 'text-sky-400 border-b-2 border-sky-400' : 'text-slate-500'"
-                                class="px-4 py-2 font-bold text-sm">Previsualización PDF</button>
+                                class="px-4 py-2 font-bold text-sm">Previsualización de Archivo</button>
                     </div>
 
                     <!-- SubView: Chunks -->
@@ -66,17 +66,29 @@
                         </div>
                     </div>
 
-                    <!-- SubView: PDF Preview -->
+                    <!-- SubView: File Preview -->
                     <div x-show="indexingSubView === 'preview'" class="flex-1 glass rounded-xl overflow-hidden relative">
-                        <iframe :src="'/api/v1/documents/' + selectedDocId + '/file'" 
-                                class="w-full h-full border-none bg-slate-800"
-                                type="application/pdf"></iframe>
-                        
-                        <div x-show="selectedDocSourceType !== 'PDF'" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-10">
+                        <!-- Iframe para PDF y Texto -->
+                        <template x-if="['PDF', 'TEXT', 'TXT'].includes(selectedDocSourceType)">
+                            <div class="w-full h-full relative">
+                                <a :href="'/api/v1/documents/' + selectedDocId + '/file'" target="_blank" 
+                                   class="absolute top-4 right-10 z-20 bg-slate-900/80 text-sky-400 p-2 rounded-lg hover:bg-sky-500 hover:text-white transition flex items-center gap-2 text-[10px] font-bold border border-white/10"
+                                   title="Abrir en pestaña nueva">
+                                    <span>Pestaña Nueva</span> ↗️
+                                </a>
+                                <iframe :src="'/api/v1/documents/' + selectedDocId + '/file'" 
+                                        class="w-full h-full border-none bg-slate-800"></iframe>
+                            </div>
+                        </template>
+
+                        <!-- Mensaje para otros tipos (DOCX, etc) -->
+                        <div x-show="!['PDF', 'TEXT', 'TXT'].includes(selectedDocSourceType)" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-10">
                              <div class="text-center p-6">
-                                 <p class="text-slate-300 mb-4">La previsualización interactiva solo está disponible para PDFs.</p>
+                                 <div class="text-5xl mb-4">📄</div>
+                                 <p class="text-slate-300 mb-2 font-bold">Previsualización no disponible</p>
+                                 <p class="text-slate-500 text-xs mb-6">El formato <span class="text-sky-400" x-text="selectedDocSourceType"></span> no se puede mostrar directamente en el navegador.</p>
                                  <a :href="'/api/v1/documents/' + selectedDocId + '/file'" 
-                                    class="bg-sky-600 px-4 py-2 rounded-lg font-bold hover:bg-sky-500 transition">Descargar Archivo</a>
+                                    class="bg-sky-600 px-6 py-2 rounded-lg font-bold hover:bg-sky-500 transition inline-block">Descargar para ver</a>
                              </div>
                         </div>
                     </div>

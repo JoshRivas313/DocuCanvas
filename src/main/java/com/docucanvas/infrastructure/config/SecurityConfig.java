@@ -16,7 +16,8 @@ public class SecurityConfig {
                 .anyRequest().permitAll()
             )
             .formLogin(login -> login.permitAll())
-            .httpBasic(basic -> {});
+            .httpBasic(basic -> {})
+            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
             
         return http.build();
     }

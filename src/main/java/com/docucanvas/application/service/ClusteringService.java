@@ -19,10 +19,15 @@ public class ClusteringService {
 
     private static final Logger log = LoggerFactory.getLogger(ClusteringService.class);
 
+    private final org.springframework.ai.chat.client.ChatClient chatClient;
     private static final List<String> COLORS = List.of(
             "#38bdf8", "#818cf8", "#fbbf24", "#34d399", "#f87171",
             "#a78bfa", "#fb7185", "#2dd4bf", "#f472b6", "#fb923c"
     );
+
+    public ClusteringService(org.springframework.ai.chat.client.ChatClient.Builder chatClientBuilder) {
+        this.chatClient = chatClientBuilder.build();
+    }
 
     /**
      * Agrupa puntos en K clusters.
@@ -80,10 +85,36 @@ public class ClusteringService {
      * Genera un nombre descriptivo simple para el cluster basado en su contenido.
      */
     public String generateClusterName(int index, List<String> contents) {
-        // En una implementación real usaríamos extracción de keywords o LLM.
-        // Para la demo, tomamos la palabra más larga del primer chunk como "tema".
         if (contents.isEmpty()) return "Grupo " + index;
         
+        try {
+            // Tomamos una muestra de los primeros 3 fragmentos para el análisis
+            String sample = contents.stream()
+                    .limit(3)
+                    .map(s -> s.substring(0, Math.min(s.length(), 200)))
+                    .collect(Collectors.joining("\n--- \n"));
+
+            String topic = chatClient.prompt()
+                    .system("Eres un clasificador de temas. Responde solo con una o dos palabras que definan el tema.")
+                    .user("Define el tema central de estos fragmentos:\n" + sample)
+                    .call()
+                    .content();
+
+            // Limpieza del resultado
+            topic = topic.replaceAll("[^a-zA-ZáéíóúÁÉÍÓÚ\\s]", "").trim();
+            if (topic.length() > 25) topic = topic.substring(0, 25);
+            if (topic.isEmpty()) return fallbackClusterName(index, contents);
+
+            String capitalized = topic.substring(0, 1).toUpperCase() + topic.substring(1).toLowerCase();
+            return "Grupo " + index + ": " + capitalized;
+
+        } catch (Exception e) {
+            log.warn("Fallo en IA para nombrar cluster {}, usando heurístico", index);
+            return fallbackClusterName(index, contents);
+        }
+    }
+
+    private String fallbackClusterName(int index, List<String> contents) {
         String longestWord = Arrays.stream(contents.get(0).split("\\s+"))
                 .map(s -> s.replaceAll("[^a-zA-ZáéíóúÁÉÍÓÚ]", ""))
                 .filter(s -> s.length() > 4)

@@ -7,7 +7,7 @@
 
 > **"No leas la documentación, haz que Spring AI te la dibuje"**
 
-DocuCanvas es una plataforma de consulta inteligente sobre documentos que utiliza la potencia de **Spring AI** para no solo responder preguntas basadas en contexto real (RAG), sino también para **generar una representación visual** de ese conocimiento de forma dinámica.
+DocuCanvas es una plataforma de consulta inteligente sobre documentos que utiliza la potencia de **Spring AI** para no solo responder preguntas basadas en contexto real (RAG), sino también para **generar una representación visual** de ese conocimiento de forma dinámica mediante un mapa 3D semántico.
 
 ---
 
@@ -16,286 +16,169 @@ DocuCanvas es una plataforma de consulta inteligente sobre documentos que utiliz
 | Tecnología | Versión | Por qué se usa |
 | :--- | :--- | :--- |
 | **Java** | 21 | Soporte para Virtual Threads y características modernas del lenguaje. |
-| **Spring Boot** | 3.4.4 | Framework base robusto con soporte nativo para IA y observabilidad. |
-| **Spring AI** | 1.0.0-M5 | Abstracciones consistentes para modelos de IA sin vendor lock-in. |
-| **OpenAI** | Latest | Modelos GPT-4o-mini y DALL-E 3 para razonamiento y visión. |
+| **Spring Boot** | 3.4.4 | Framework base robusto con soporte nativo para IA. |
+| **Spring AI** | 1.0.0-M5 | Abstracciones para VectorStore, ChatClient e ImageModel. |
+| **OpenAI** | Latest | Modelos GPT-4o-mini y DALL-E 3 para RAG y visión. |
 | **PGVector** | 16 | Extensión de PostgreSQL para búsqueda vectorial nativa con SQL. |
-| **Docker** | 25.x+ | Orquestación de servicios e infraestructura persistente. |
-| **Apache Tika** | 3.0.0 | Extracción universal de texto de casi cualquier formato (PDF, DOCX). |
-| **Alpine.js** | 3.x | Reactividad ligera para la interfaz web. |
+| **Thymeleaf** | 3.x | Motor de plantillas para un frontend modular y eficiente. |
+| **Alpine.js** | 3.x | Reactividad ligera para la gestión de estados en la UI. |
 | **Plotly.js** | 2.32.0 | Visualización 3D interactiva de los vectores de embedding. |
+| **Apache Commons Math** | 3.6.1 | Optimización de PCA mediante **SVD (Singular Value Decomposition)**. |
 
 ---
 
-## 🐳 Infraestructura Docker
+## 🚀 Ejecución Rápida (3 Pasos)
 
-La aplicación utiliza un entorno pre-configurado mediante **Docker Compose** para garantizar que la base de datos vectorial esté lista sin configuraciones manuales complejas.
-
-### Contenedores en Uso: 1
-1. **`docucanvas-db` (ankane/pgvector)**:
-   - **Motivo**: Es el corazón del sistema RAG. Provee una instancia de PostgreSQL 16 con la extensión `vector` preinstalada. Esto permite almacenar los embeddings de 1536 dimensiones generados por OpenAI y realizar búsquedas de similitud (distancia de coseno/L2) mediante consultas SQL optimizadas.
-
----
-
-## 🔌 Diseño de API (Estructura JSON)
-
-Documentación técnica de todos los endpoints disponibles, detallando el contrato de comunicación (Request/Response) en formato JSON.
-
-### 📄 Documentos
-
-#### 1. Listar Documentos
-**Endpoint:** `GET /api/v1/documents`
-
-**Request**
-*(No requiere cuerpo)*
-
-**Response**
-```json
-[
-  {
-    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    "title": "Manual de Usuario.pdf",
-    "sourceType": "PDF",
-    "status": "READY",
-    "chunkCount": 42,
-    "createdAt": "2024-03-27T10:00:00Z",
-    "updatedAt": "2024-03-27T10:05:00Z"
-  }
-]
-```
-
-#### 2. Subir Archivo (Binario)
-**Endpoint:** `POST /api/v1/documents/upload`
-
-**Request**
-*(Form-Data)*
-- `file`: (Archivo binario)
-- `title`: "Título opcional"
-
-**Response**
-```json
-{
-  "jobId": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-  "documentId": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-  "status": "PROCESSING",
-  "statusUrl": "/api/v1/ingestion-jobs/a1b2c3d4-e5f6-7890-abcd-1234567890ab"
-}
-```
-
-#### 3. Importar Texto Directo
-**Endpoint:** `POST /api/v1/documents/import-text`
-
-**Request**
-```json
-{
-  "title": "Notas de Reunión",
-  "content": "El proyecto DocuCanvas utiliza Spring AI para...",
-  "sourceType": "TEXT"
-}
-```
-
-**Response**
-```json
-{
-  "id": "e9f8g7h6-i5j4-k3l2-m1n0-p9q8r7s6t5u4",
-  "title": "Notas de Reunión",
-  "status": "READY",
-  "createdAt": "2024-03-27T11:20:00Z"
-}
-```
-
-#### 4. Consultar Estado de Ingesta
-**Endpoint:** `GET /api/v1/ingestion-jobs/{id}`
-
-**Request**
-*(Path Variable: jobId)*
-
-**Response**
-```json
-{
-  "jobId": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-  "documentId": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-  "status": "READY",
-  "processedChunks": 15,
-  "error": null,
-  "createdAt": "2024-03-27T11:00:00Z",
-  "finishedAt": "2024-03-27T11:02:00Z"
-}
-```
-
-### 🧠 Consultas IA
-
-#### 5. Pregunta RAG Multimodal
-**Endpoint:** `POST /api/v1/questions/ask`
-
-**Request**
-```json
-{
-  "question": "¿Qué es DocuCanvas?",
-  "maxChunks": 5,
-  "documentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-}
-```
-
-**Response**
-```json
-{
-  "question": "¿Qué es DocuCanvas?",
-  "answer": "DocuCanvas es una plataforma de consulta inteligente...",
-  "sources": ["Manual de Usuario.pdf"],
-  "chunkCount": 3,
-  "imageUrl": "https://oaidalleapiprodscus.blob.core.windows.net/..."
-}
-```
-
-### 📊 Visualización (VectorStore)
-
-#### 6. Obtener Chunks (Mapa 3D)
-**Endpoint:** `GET /api/v1/chunks/visualize`
-
-**Request**
-*(No requiere cuerpo)*
-
-**Response**
-```json
-[
-  {
-    "id": "chunk-0b1c",
-    "content": "DocuCanvas utiliza embeddings de OpenAI...",
-    "coordinates": [-0.1245, 0.4578, -0.8912],
-    "documentName": "Arquitectura.pdf"
-  }
-]
-```
-
-#### 7. Chunks por Documento
-**Endpoint:** `GET /api/v1/chunks/document/{id}`
-
-**Request**
-*(Path Variable: documentId)*
-
-**Response**
-```json
-[
-  {
-    "id": "chunk-a7b2",
-    "content": "Contenido específico del fragmento...",
-    "coordinates": [0.01, -0.05, 0.12],
-    "documentName": "Documento_Muestra"
-  }
-]
-```
-
-#### 8. Búsqueda Semántica Pura
-**Endpoint:** `GET /api/v1/chunks/search?query=...`
-
-**Request**
-*(Query Param: query)*
-
-**Response**
-```json
-[
-  "chunk-uuid-1",
-  "chunk-uuid-2",
-  "chunk-uuid-3",
-  "chunk-uuid-4",
-  "chunk-uuid-5"
-]
-```
+1. **Iniciar Infraestructura**: Levanta PGVector en el puerto 5433.
+   ```powershell
+   docker-compose up -d
+   ```
+2. **Arrancar Aplicación**: Inicia el backend y frontend integrado.
+   ```powershell
+   ./mvnw spring-boot:run
+   ```
+3. **Acceso Web**: Abre tu navegador en:
+   > [http://localhost:8080](http://localhost:8080)
 
 ---
 
-## 🖼️ Vistas de la Aplicación (Módulos de la Demo)
-
-DocuCanvas ofrece una experiencia visual completa diseñada para transparentar el proceso de la IA. A través de la barra de navegación, se accede a los siguientes módulos:
-
-### 1. 📤 Subir (Alimentar el Cerebro)
-Es el punto de entrada principal para el conocimiento.
-- **Ingesta Multicanal**: Soporta carga de archivos binarios (**PDF, DOCX, TXT**) mediante un área de *Drag & Drop* interactiva o mediante la inserción de texto plano directo.
-- **Gestión de Estado**: Lista los documentos procesados mostrando su estado de indexación en tiempo real (PENDING, READY, FAILED) y metadatos básicos como el conteo de fragmentos generados.
-
-### 2. 📑 Vista Indexación (Auditoría de Chunks)
-Diseñada para que el usuario entienda cómo la IA "lee" sus documentos.
-- **Fragmentación Aislada**: Al seleccionar un documento, el sistema muestra el resultado del `TokenTextSplitter`.
-- **Detalle Técnico**: Cada fragmento (Chunk) se presenta con su ID único, un cálculo aproximado de tokens y un vistazo a su ubicación en el espacio latente. Es ideal para validar que el *chunking* sea coherente y no se pierda contexto.
-
-### 3. 🌍 Visor de Embeddings (Mapa Semántico 3D)
-Representación visual del conocimiento almacenado en **PGVector**.
-- **Espacio Latente 3D**: Utiliza **Plotly.js** para renderizar un universo de puntos donde cada uno representa un fragmento de texto. Los fragmentos con significados similares aparecen agrupados físicamente.
-- **Inspector Semántico**: Permite filtrar la visualización por documento y resaltar fragmentos específicos, facilitando la comprensión de cómo se relaciona la información de diferentes archivos.
-
-### 4. 🚀 Pipeline RAG (Flujo Animado)
-Un diagrama interactivo generado con SVG que educa al usuario sobre el proceso interno.
-- **Visualización del Proceso**: Muestra el camino que sigue un dato desde que es un archivo hasta que se convierte en una respuesta de OpenAI asistida por **Apache Tika** y **Dall-E 3**.
-- **Orquestación**: Subraya el papel de Spring AI como el motor de orquestación central de todo el flujo multimodal.
-
-### 5. 💬 Preguntar (Interfaz Multimodal)
-Donde el usuario interactúa con la inteligencia generada.
-- **Chat Contextual**: El usuario realiza preguntas y el sistema responde basándose *exclusivamente* en los documentos indexados (Grounded Generation).
-- **Salida Gráfica**: Gracias al `ImageModel`, cada respuesta textual se acompaña de una **infografía técnica** o representación visual generada dinámicamente, haciendo el conocimiento más digerible.
-- **Transparencia**: Indica las fuentes o documentos específicos que fueron utilizados para generar cada respuesta.
-
----
-
-## 🏗️ Arquitectura del Sistema
-
-El proyecto sigue una **Arquitectura Hexagonal (Puertos y Adaptadores)**, asegurando que el dominio esté protegido de dependencias externas.
-
-### Tuberías de Datos (Pipelines)
-
-#### 1. Pipeline de Ingesta e Indexación
-```mermaid
-graph LR
-    A[Archivo/Texto] --> B[Apache Tika]
-    B --> C[TokenTextSplitter 200t]
-    C --> D[OpenAI Embedding]
-    D --> E[PostgreSQL pgvector]
-    E --> F[Estado: READY]
-```
-
-#### 2. Pipeline Multimodal (RAG + Visión)
-```mermaid
-graph TD
-    User([Usuario]) --> Q[Pregunta]
-    Q --> Emb[OpenAI Embedding]
-    Emb --> Search[Vector Search pgvector]
-    Search --> Context[Contexto Top-K]
-    Context --> Prompt[RAG Advisor Prompt]
-    Prompt --> Gen[OpenAI GPT-4o-mini]
-    Gen --> Answer[Respuesta Textual]
-    Answer --> Visual[Visual Prompt -> DALL-E 3]
-    Visual --> Output[UI: Respuesta + Imagen 🎨]
-    Output --> User
-```
-
----
-
-## 📂 Estructura de Carpetas
+## 📂 Estructura del Proyecto
 
 ```text
 c:/intelijent/Proyecto_Base_SpringBoot/
 ├── src/main/java/com/docucanvas/
-│   ├── api/                        # Adaptadores de Entrada (REST, Dto, Advice)
-│   ├── application/                # Servicios Core (Chunk, Ingestion, Question)
-│   ├── domain/                     # Lógica de Negocio (Modelos, Repositorios)
-│   └── infrastructure/             # Adaptadores de Salida (Config, AI, Persistence)
+│   ├── api/controller/             # Controladores REST y Web (Thymeleaf)
+│   ├── application/service/        # Lógica Central: Ingesta, PCA (SVD), Clustering (KMeans)
+│   ├── application/usecase/        # Casos de uso de negocio (UploadDocument)
+│   ├── domain/model/               # Entidades de dominio (Document, Chunk)
+│   └── infrastructure/             # Adaptadores de Persistence (PGVector), AI y Config
 ├── src/main/resources/
-│   ├── db/migration/               # Flyway SQL (V1 a V4)
-│   ├── static/                     # Frontend (AlpineJS + Plotly)
-│   └── application.yaml            # Configuración OpenAI y Postgres
-├── docker-compose.yml              # Servidor PGVector
-└── pom.xml                         # Dependencias Maven
+│   ├── db/migration/               # Flyway SQL (Evolución del Schema)
+│   ├── templates/                  # Template Principal (index.html)
+│   ├── templates/fragments/        # Fragmentos modulares (upload, indexing, ask, chunks)
+│   └── application.yaml            # Configuración OpenAI, PGVector y DB
+├── docker-compose.yml              # Servidor PGVector (puerto 5433)
+└── pom.xml                         # Dependencias Maven y Spring Boot
 ```
 
 ---
 
-## 🔐 Seguridad y Notas de Demo
-- **Acceso Directo**: Para esta demostración técnica, la seguridad en `SecurityConfig.java` se ha establecido en `permitAll()` para permitir un acceso fluido.
-- **Base de Datos**: PGVector corre en el puerto `5433` (vía Docker) para evitar conflictos con instancias locales de Postgres.
+## 🔌 Referencia de la API
+
+### 📄 Gestión de Documentos
+
+#### 1. Listar Documentos
+- **URL**: `GET /api/v1/documents`
+- **Uso**: Obtiene todos los documentos indexados en el sistema.
+- **Response**:
+```json
+[
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "title": "Manual_Gatos.pdf",
+    "sourceType": "PDF",
+    "status": "READY",
+    "chunkCount": 12
+  }
+]
+```
+
+#### 2. Subir Archivo (Multipart)
+- **URL**: `POST /api/v1/documents/upload`
+- **Uso**: Sube un archivo físico (PDF, DOCX, TXT) para su procesamiento.
+- **Request (Form-Data)**:
+  - `file`: [Binario del archivo]
+  - `title`: "Nombre del Documento" (Opcional)
+- **Response**:
+```json
+{
+  "id": "uuid-generado",
+  "title": "Nombre del Documento",
+  "status": "READY"
+}
+```
+
+#### 3. Ver/Descargar Archivo Binarizado
+- **URL**: `GET /api/v1/documents/{id}/file`
+- **Uso**: Recupera el contenido binario original para previsualización.
+- **Response**: `Flujo de bytes con el Content-Type correcto (inline).`
 
 ---
 
-## 🚀 Ejecución Rápida
-1. `docker-compose up -d`
-2. `./mvnw spring-boot:run`
-3. Abrir [http://localhost:8080](http://localhost:8080)
+### 📊 Visualización y Semántica
+
+#### 4. Visualizar Chunks (3D)
+- **URL**: `GET /api/v1/chunks/visualize`
+- **Uso**: Obtiene todos los fragmentos con sus coordenadas 3D (PCA/SVD) y cluster asignado.
+- **Response**:
+```json
+[
+  {
+    "id": "chunk-uuid",
+    "content": "Contenido del fragmento...",
+    "coordinates": [0.45, -0.12, 0.89],
+    "cluster": 1,
+    "documentName": "Manual.pdf"
+  }
+]
+```
+
+---
+
+### 🧠 Inteligencia Artificial (RAG)
+
+#### 5. Pregunta RAG Multimodal
+- **URL**: `POST /api/v1/questions/ask`
+- **Uso**: Realiza una pregunta basada en el contexto de los documentos e invoca al `ImageModel`.
+- **Request (JSON)**:
+```json
+{
+  "question": "¿De qué trata el capítulo 1?",
+  "documentId": "uuid-del-doc",
+  "maxChunks": 5
+}
+```
+- **Response (JSON)**:
+```json
+{
+  "question": "¿De qué trata el capítulo 1?",
+  "answer": "El capítulo 1 trata sobre...",
+  "sources": ["Manual_Gatos.pdf"],
+  "imageUrl": "https://url-a-la-imagen-generada.com/..."
+}
+```
+
+---
+
+## 🧠 Arquitectura de la Demo
+
+El proyecto sigue una **Arquitectura Hexagonal**, asegurando que el dominio esté protegido de dependencias externas.
+
+### Flujos Principales:
+
+1. **Ingesta e Indexación**:
+   - Extrae texto con **Apache Tika**.
+   - Genera fragmentos inteligentes (Chunks) con **TokenTextSplitter**.
+   - Calcula embeddings de 1536 dimensiones y los persiste físicamente en **PGVector**.
+   - **Optimización**: Los fragmentos se proyectan a 3D usando **SVD** para una visualización fluida.
+
+2. **RAG Multimodal**:
+   - Búsqueda semántica sobre los fragmentos indexados.
+   - Generación de respuesta contextual con GPT-4o-mini.
+   - Creación de una **infografía visual** con DALL-E 3 basada en la respuesta generada.
+
+---
+
+## 🖼️ Módulos de la Interfaz
+
+1.  **📤 Subir**: Carga de archivos (**PDF, DOCX, TXT**) y texto directo con persistencia binaria inmediata.
+2.  **📑 Vista Indexación**: Auditoría de fragmentos y **Previsualizador Multiformato** (ver PDF/TXT al lado de los chunks).
+3.  **🌍 Visor de Embeddings**: Mapa 3D interactivo con **Clusters Semánticos dinámicos** (grupos por colores).
+4.  **💬 Preguntar**: Chat RAG con fuentes citadas y generación de imágenes generativas por respuesta.
+
+---
+
+## 🔐 Notas de Configuración
+- **API Key**: Se configura en `application.yaml` o mediante la variable de entorno `OPENAI_API_KEY`.
+- **Database**: PostgreSQL corre en puerto `5433` vía Docker para evitar conflictos locales.
+- **X-Frame-Options**: Configurado como `SAMEORIGIN` en `SecurityConfig` para permitir la previsualización de archivos en iframes.
