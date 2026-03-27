@@ -37,59 +37,170 @@ La aplicación utiliza un entorno pre-configurado mediante **Docker Compose** pa
 
 ---
 
-## 🔌 Diseño de API (Visual)
+## 🔌 Diseño de API (Estructura JSON)
 
-A continuación se detalla la estructura de los endpoints principales mediante diagramas de flujo de datos (Request ➔ Response).
+Documentación técnica de todos los endpoints disponibles, detallando el contrato de comunicación (Request/Response) en formato JSON.
 
-### 1. Consulta RAG Multimodal
-**Endpoint:** `POST /api/v1/questions/ask`
+### 📄 Documentos
 
-```mermaid
-graph LR
-    subgraph Request
-        A[question: String]
-        B[maxChunks: Integer]
-        C[documentId: UUID]
-    end
-    Request --> API((/ask))
-    API --> Response
-    subgraph Response
-        D[answer: String]
-        E[sources: List]
-        F[imageUrl: URL]
-    end
+#### 1. Listar Documentos
+**Endpoint:** `GET /api/v1/documents`
+
+**Request**
+*(No requiere cuerpo)*
+
+**Response**
+```json
+[
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "title": "Manual de Usuario.pdf",
+    "sourceType": "PDF",
+    "status": "READY",
+    "chunkCount": 42,
+    "createdAt": "2024-03-27T10:00:00Z",
+    "updatedAt": "2024-03-27T10:05:00Z"
+  }
+]
 ```
 
-### 2. Ingesta de Documentos (Upload)
+#### 2. Subir Archivo (Binario)
 **Endpoint:** `POST /api/v1/documents/upload`
 
-```mermaid
-graph LR
-    subgraph Request
-        A[file: MultipartFile]
-        B[title: String]
-    end
-    Request --> API((/upload))
-    API --> Response
-    subgraph Response
-        C[jobId: UUID]
-        D[status: PROCESSING]
-        E[statusUrl: String]
-    end
+**Request**
+*(Form-Data)*
+- `file`: (Archivo binario)
+- `title`: "Título opcional"
+
+**Response**
+```json
+{
+  "jobId": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
+  "documentId": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
+  "status": "PROCESSING",
+  "statusUrl": "/api/v1/ingestion-jobs/a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+}
 ```
 
-### 3. Visualización de Espacio Latente
+#### 3. Importar Texto Directo
+**Endpoint:** `POST /api/v1/documents/import-text`
+
+**Request**
+```json
+{
+  "title": "Notas de Reunión",
+  "content": "El proyecto DocuCanvas utiliza Spring AI para...",
+  "sourceType": "TEXT"
+}
+```
+
+**Response**
+```json
+{
+  "id": "e9f8g7h6-i5j4-k3l2-m1n0-p9q8r7s6t5u4",
+  "title": "Notas de Reunión",
+  "status": "READY",
+  "createdAt": "2024-03-27T11:20:00Z"
+}
+```
+
+#### 4. Consultar Estado de Ingesta
+**Endpoint:** `GET /api/v1/ingestion-jobs/{id}`
+
+**Request**
+*(Path Variable: jobId)*
+
+**Response**
+```json
+{
+  "jobId": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
+  "documentId": "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
+  "status": "READY",
+  "processedChunks": 15,
+  "error": null,
+  "createdAt": "2024-03-27T11:00:00Z",
+  "finishedAt": "2024-03-27T11:02:00Z"
+}
+```
+
+### 🧠 Consultas IA
+
+#### 5. Pregunta RAG Multimodal
+**Endpoint:** `POST /api/v1/questions/ask`
+
+**Request**
+```json
+{
+  "question": "¿Qué es DocuCanvas?",
+  "maxChunks": 5,
+  "documentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+}
+```
+
+**Response**
+```json
+{
+  "question": "¿Qué es DocuCanvas?",
+  "answer": "DocuCanvas es una plataforma de consulta inteligente...",
+  "sources": ["Manual de Usuario.pdf"],
+  "chunkCount": 3,
+  "imageUrl": "https://oaidalleapiprodscus.blob.core.windows.net/..."
+}
+```
+
+### 📊 Visualización (VectorStore)
+
+#### 6. Obtener Chunks (Mapa 3D)
 **Endpoint:** `GET /api/v1/chunks/visualize`
 
-```mermaid
-graph LR
-    API((/visualize)) --> Response
-    subgraph Response
-        A[id: String]
-        B[content: String]
-        C[coordinates: List-Double]
-        D[documentName: String]
-    end
+**Request**
+*(No requiere cuerpo)*
+
+**Response**
+```json
+[
+  {
+    "id": "chunk-0b1c",
+    "content": "DocuCanvas utiliza embeddings de OpenAI...",
+    "coordinates": [-0.1245, 0.4578, -0.8912],
+    "documentName": "Arquitectura.pdf"
+  }
+]
+```
+
+#### 7. Chunks por Documento
+**Endpoint:** `GET /api/v1/chunks/document/{id}`
+
+**Request**
+*(Path Variable: documentId)*
+
+**Response**
+```json
+[
+  {
+    "id": "chunk-a7b2",
+    "content": "Contenido específico del fragmento...",
+    "coordinates": [0.01, -0.05, 0.12],
+    "documentName": "Documento_Muestra"
+  }
+]
+```
+
+#### 8. Búsqueda Semántica Pura
+**Endpoint:** `GET /api/v1/chunks/search?query=...`
+
+**Request**
+*(Query Param: query)*
+
+**Response**
+```json
+[
+  "chunk-uuid-1",
+  "chunk-uuid-2",
+  "chunk-uuid-3",
+  "chunk-uuid-4",
+  "chunk-uuid-5"
+]
 ```
 
 ---
@@ -155,26 +266,6 @@ c:/intelijent/Proyecto_Base_SpringBoot/
 ├── docker-compose.yml              # Servidor PGVector
 └── pom.xml                         # Dependencias Maven
 ```
-
----
-
-## 🔌 Endpoints de la API (v1)
-
-### Documentos
-- `GET /api/v1/documents`: Lista todos los documentos y su estado.
-- `POST /api/v1/documents/upload`: Sube un archivo binario.
-- `POST /api/v1/documents/import-text`: Importa texto plano directamente.
-- `GET /api/v1/ingestion-jobs/{id}`: Consulta el estado tras una carga.
-
-### Consultas IA
-- `POST /api/v1/questions/ask`: Envía una pregunta al pipeline RAG.
-  - **Request**: `{ "question": "...", "maxChunks": 5, "documentId": "..." }`
-  - **Response**: `{ "question": "...", "answer": "...", "sources": [...], "imageUrl": "..." }`
-
-### Visualización
-- `GET /api/v1/chunks/visualize`: Obtiene todos los chunks con coordenadas 3D.
-- `GET /api/v1/chunks/document/{id}`: Obtiene los chunks de un documento específico.
-- `GET /api/v1/chunks/search?query=...`: Similitud semántica pura de chunks.
 
 ---
 
