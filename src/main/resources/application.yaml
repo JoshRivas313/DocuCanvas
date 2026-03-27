@@ -3,7 +3,8 @@ spring:
     name: docu-canvas
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY:OPENAI_KEY_REMOVED}
+      # Fix rápido: Quemar la llave directamente para esquivar la variable de estado "OPENAI_API_KEY=Clave" cacheada en IntelliJ
+      api-key: OPENAI_KEY_REMOVED
       chat:
         options:
           model: gpt-4o-mini
