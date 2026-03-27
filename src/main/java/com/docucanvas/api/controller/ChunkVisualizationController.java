@@ -5,6 +5,7 @@ import com.docucanvas.application.service.ChunkService;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,6 +37,15 @@ public class ChunkVisualizationController {
     @GetMapping("/visualize")
     public List<ChunkDTO> getChunks() {
         return chunkService.getChunksForVisualization();
+    }
+
+    /**
+     * Retorna los chunks específicos de un documento ingerido.
+     * Utilizado para la vista de Indexación individual.
+     */
+    @GetMapping("/document/{documentId}")
+    public List<ChunkDTO> getChunksByDocumentId(@PathVariable String documentId) {
+        return chunkService.getChunksByDocumentId(documentId);
     }
 
     /**

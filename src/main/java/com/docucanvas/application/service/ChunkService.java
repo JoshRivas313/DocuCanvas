@@ -66,6 +66,40 @@ public class ChunkService {
     }
 
     /**
+     * Recupera todos los chunks asociados a un documento específico.
+     * Utilizado para la vista de "Indexación" aislada.
+     *
+     * @param documentId identificador del documento
+     * @return lista de DTOs con el contenido completo de los chunks
+     */
+    public List<ChunkDTO> getChunksByDocumentId(String documentId) {
+        log.debug("Consultando chunks para el documento: {}", documentId);
+
+        return jdbcClient
+                .sql("""
+                        SELECT id,
+                               content,
+                               embedding::text AS emb_text,
+                               metadata->>'file_name' AS doc_name
+                        FROM document_chunks
+                        WHERE metadata->>'documentId' = :documentId
+                        ORDER BY metadata->>'chunk_index'
+                        """)
+                .param("documentId", documentId)
+                .query((rs, rowNum) -> {
+                    String id = rs.getString("id");
+                    String content = rs.getString("content");
+                    
+                    String docName = rs.getString("doc_name");
+                    if (docName == null) docName = "Desconocido";
+
+                    List<Double> coords = parseFirstThreeDimensions(rs.getString("emb_text"));
+                    return new ChunkDTO(id, content, coords, docName);
+                })
+                .list();
+    }
+
+    /**
      * Extrae las primeras 3 dimensiones de un vector PGVector (formato "[d1,d2,d3,...]")
      * para proyección en espacio 3D.
      */
