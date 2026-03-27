@@ -11,7 +11,9 @@ import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImageResponse;
 import org.springframework.stereotype.Service;
 
+import com.docucanvas.api.dto.response.CitationDTO;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Servicio que orquesta el pipeline completo RAG → Generación → Imagen.
@@ -34,67 +36,89 @@ public class QuestionService {
     private final VectorStore vectorStore;
     private final ImageGenerationService imageGenerationService;
     private final ImageModel imageModel;
+    private final org.springframework.jdbc.core.simple.JdbcClient jdbcClient;
 
     public QuestionService(ChatClient.Builder chatClientBuilder,
                            VectorStore vectorStore,
                            ImageGenerationService imageGenerationService,
-                           ImageModel imageModel) {
+                           ImageModel imageModel,
+                           org.springframework.jdbc.core.simple.JdbcClient jdbcClient) {
         this.chatClientBuilder = chatClientBuilder;
         this.vectorStore = vectorStore;
         this.imageGenerationService = imageGenerationService;
         this.imageModel = imageModel;
+        this.jdbcClient = jdbcClient;
     }
 
     public QuestionResponse answer(QuestionRequest request) {
-        log.info("Procesando pregunta con Spring AI RAG Pipeline: {}", request.question());
+        log.info("DEBUG DIAGNÓSTICO RAG - Pregunta: {}", request.question());
+        
+        // Verificación de integridad de la DB
+        Integer totalInDb = jdbcClient.sql("SELECT count(*) FROM document_chunks").query(Integer.class).single();
+        log.info("DEBUG DIAGNÓSTICO RAG - Total chunks en DB: {}", totalInDb);
 
-        // ── Construir SearchRequest (con filtro opcional por documentId) ──────────
+        // 1. Recuperación manual de fragmentos para citaciones
         SearchRequest.Builder searchBuilder = SearchRequest.builder()
-                .topK(request.maxChunks())
-                .similarityThreshold(0.7);
+                .query(request.question())
+                .topK(request.maxChunks() != null ? request.maxChunks() : 5)
+                .similarityThreshold(0.0);
 
         if (request.documentId() != null) {
-            log.info("Aplicando filtro RAG por documentId: {}", request.documentId());
             FilterExpressionBuilder b = new FilterExpressionBuilder();
             searchBuilder.filterExpression(b.eq("documentId", request.documentId().toString()).build());
         }
 
-        // ── Construir ChatClient con el advisor RAG dinámico ─────────────────────
+        List<org.springframework.ai.document.Document> docs = vectorStore.similaritySearch(searchBuilder.build());
+        log.info("DEBUG DIAGNÓSTICO RAG - Chunks recuperados por similitud: {}", docs.size());
+        
+        List<CitationDTO> citations = docs.stream()
+                .map(d -> {
+                    log.info("DEBUG DIAGNÓSTICO RAG - Fragmento recuperado de: {}", d.getMetadata().get("source"));
+                    return new CitationDTO(
+                        (String) d.getMetadata().getOrDefault("source", "Documento"),
+                        d.getContent(),
+                        0.99
+                    );
+                })
+                .toList();
+
+        // 2. Generación fundamentada con ChatClient
+        String context = docs.stream()
+                .map(org.springframework.ai.document.Document::getContent)
+                .collect(java.util.stream.Collectors.joining("\n\n"));
+
         ChatClient chatClient = chatClientBuilder
-                .defaultAdvisors(new QuestionAnswerAdvisor(vectorStore, searchBuilder.build()))
                 .defaultSystem(SYSTEM_PROMPT)
                 .build();
 
-        // ── Invocar el pipeline: recuperación + generación fundada ───────────────
         String answer = chatClient.prompt()
-                .user(request.question())
+                .user(u -> u.text("Contexto:\n{context}\n\nPregunta: {question}")
+                        .param("context", context.isEmpty() ? "No se encontró contexto relevante." : context)
+                        .param("question", request.question()))
                 .call()
                 .content();
 
-        log.info("Respuesta generada. Procediendo a generación visual con ImageModel.");
+        // Inyectar diagnóstico si falló la búsqueda
+        if (docs.isEmpty()) {
+            answer = "DIAGNÓSTICO: No recuperé fragmentos. Total en DB: " + totalInDb + ". Revisa si el mapa 3D tiene puntos. \n\n" + answer;
+        }
 
-        // ── Generación visual: RAG answer → ImagePrompt → DALL-E ─────────────────
+        // 3. Generación visual
         String imageUrl = "";
         try {
             org.springframework.ai.image.ImagePrompt visualPrompt = imageGenerationService.generateImagePrompt(answer);
-            ImageResponse response = imageModel.call(visualPrompt);
-            imageUrl = response.getResult().getOutput().getUrl();
-            log.info("Imagen generada exitosamente: {}", imageUrl);
+            ImageResponse imgRes = imageModel.call(visualPrompt);
+            imageUrl = imgRes.getResult().getOutput().getUrl();
         } catch (Exception e) {
-            log.error("Fallo en ImageModel (la respuesta textual sigue siendo válida): ", e);
-            imageUrl = "Imagen no disponible: " + e.getMessage();
+            log.error("Error en ImageModel: ", e);
+            imageUrl = "";
         }
-
-        // ── Fuente real: indicar si se filtró por documento específico ────────────
-        String sourceDescription = request.documentId() != null
-                ? "Documento: " + request.documentId()
-                : "Todos los documentos indexados en VectorStore";
 
         return new QuestionResponse(
                 request.question(),
                 answer,
-                List.of(sourceDescription),
-                request.maxChunks(),
+                citations,
+                docs.size(),
                 imageUrl
         );
     }
