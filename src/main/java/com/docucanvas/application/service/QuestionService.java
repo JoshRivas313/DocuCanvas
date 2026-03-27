@@ -51,17 +51,14 @@ public class QuestionService {
     }
 
     public QuestionResponse answer(QuestionRequest request) {
-        log.info("DEBUG DIAGNÓSTICO RAG - Pregunta: {}", request.question());
-        
-        // Verificación de integridad de la DB
-        Integer totalInDb = jdbcClient.sql("SELECT count(*) FROM document_chunks").query(Integer.class).single();
-        log.info("DEBUG DIAGNÓSTICO RAG - Total chunks en DB: {}", totalInDb);
+        log.info("Iniciando Pipeline RAG para: {}", request.question());
+        long start = System.currentTimeMillis();
 
-        // 1. Recuperación manual de fragmentos para citaciones
+        // 1. Recuperación (Retrieval)
         SearchRequest.Builder searchBuilder = SearchRequest.builder()
                 .query(request.question())
                 .topK(request.maxChunks() != null ? request.maxChunks() : 5)
-                .similarityThreshold(0.0);
+                .similarityThreshold(0.7); // Restaurado a nivel óptimo para producción
 
         if (request.documentId() != null) {
             FilterExpressionBuilder b = new FilterExpressionBuilder();
@@ -69,23 +66,20 @@ public class QuestionService {
         }
 
         List<org.springframework.ai.document.Document> docs = vectorStore.similaritySearch(searchBuilder.build());
-        log.info("DEBUG DIAGNÓSTICO RAG - Chunks recuperados por similitud: {}", docs.size());
+        long retrievalEnd = System.currentTimeMillis();
         
         List<CitationDTO> citations = docs.stream()
-                .map(d -> {
-                    log.info("DEBUG DIAGNÓSTICO RAG - Fragmento recuperado de: {}", d.getMetadata().get("source"));
-                    return new CitationDTO(
+                .map(d -> new CitationDTO(
                         (String) d.getMetadata().getOrDefault("source", "Documento"),
                         d.getContent(),
                         0.99
-                    );
-                })
+                ))
                 .toList();
 
-        // 2. Generación fundamentada con ChatClient
+        // 2. Generación Fundamentada (LLM)
         String context = docs.stream()
                 .map(org.springframework.ai.document.Document::getContent)
-                .collect(java.util.stream.Collectors.joining("\n\n"));
+                .collect(Collectors.joining("\n\n"));
 
         ChatClient chatClient = chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
@@ -97,29 +91,30 @@ public class QuestionService {
                         .param("question", request.question()))
                 .call()
                 .content();
+        
+        long generationEnd = System.currentTimeMillis();
 
-        // Inyectar diagnóstico si falló la búsqueda
-        if (docs.isEmpty()) {
-            answer = "DIAGNÓSTICO: No recuperé fragmentos. Total en DB: " + totalInDb + ". Revisa si el mapa 3D tiene puntos. \n\n" + answer;
-        }
-
-        // 3. Generación visual
+        // 3. Generación Visual (ImageModel)
         String imageUrl = "";
+        long visualStart = System.currentTimeMillis();
         try {
             org.springframework.ai.image.ImagePrompt visualPrompt = imageGenerationService.generateImagePrompt(answer);
             ImageResponse imgRes = imageModel.call(visualPrompt);
             imageUrl = imgRes.getResult().getOutput().getUrl();
         } catch (Exception e) {
             log.error("Error en ImageModel: ", e);
-            imageUrl = "";
         }
+        long visualEnd = System.currentTimeMillis();
 
         return new QuestionResponse(
                 request.question(),
                 answer,
                 citations,
                 docs.size(),
-                imageUrl
+                imageUrl,
+                (retrievalEnd - start),
+                (generationEnd - retrievalEnd),
+                (visualEnd - visualStart)
         );
     }
 }

@@ -184,7 +184,12 @@
                                 role: 'ai',
                                 content: data.answer,
                                 citations: data.citations,
-                                imageUrl: data.imageUrl
+                                imageUrl: data.imageUrl,
+                                metrics: {
+                                    retrieval: data.retrievalTimeMs,
+                                    generation: data.generationTimeMs,
+                                    visual: data.imageTimeMs
+                                }
                             });
                         } else {
                             throw new Error('API Error');

@@ -7,5 +7,8 @@ public record QuestionResponse(
     String answer,
     List<CitationDTO> citations,
     int chunkCount,
-    String imageUrl
+    String imageUrl,
+    long retrievalTimeMs,
+    long generationTimeMs,
+    long imageTimeMs
 ) {}

@@ -38,6 +38,23 @@
                                     </template>
                                 </div>
                             </div>
+                        <template x-if="msg.metrics">
+                            <div class="mt-4 flex flex-wrap gap-4 text-[8px] font-bold text-slate-500 border-t border-white/5 pt-2 uppercase tracking-widest">
+                                <div class="flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
+                                    REPRODUCTO RAG: <span class="text-slate-300" x-text="msg.metrics.retrieval + 'ms'"></span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                    LLM GEN: <span class="text-slate-300" x-text="msg.metrics.generation + 'ms'"></span>
+                                </div>
+                                <template x-if="msg.imageUrl">
+                                    <div class="flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        VISUAL GEN: <span class="text-slate-300" x-text="msg.metrics.visual + 'ms'"></span>
+                                    </div>
+                                </template>
+                            </div>
                         </template>
                     </div>
                 </div>
