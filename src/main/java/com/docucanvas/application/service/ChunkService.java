@@ -6,15 +6,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * Servicio de acceso a los chunks vectorizados almacenados en PGVector.
  *
  * <p>Centraliza las consultas de visualización e inspección del VectorStore,
- * respetando la separación de capas y facilitando el testing.
+ * integrando PCA para reducción de 1536d a 3d y Clustering dinámico (KMeans).
  */
 @Service
 public class ChunkService {
@@ -24,99 +23,118 @@ public class ChunkService {
     private static final int MAX_CHUNKS_VISUALIZE = 300;
 
     private final JdbcClient jdbcClient;
+    private final PcaService pcaService;
+    private final ClusteringService clusteringService;
 
-    public ChunkService(JdbcClient jdbcClient) {
+    public ChunkService(JdbcClient jdbcClient, PcaService pcaService, ClusteringService clusteringService) {
         this.jdbcClient = jdbcClient;
+        this.pcaService = pcaService;
+        this.clusteringService = clusteringService;
     }
 
     /**
-     * Recupera hasta {@value #MAX_CHUNKS_VISUALIZE} chunks con sus coordenadas
-     * reducidas (primeras 3 dimensiones del vector) para visualización 3D.
-     *
-     * @return lista de DTOs listos para el frontend de visualización
+     * Recupera chunks y aplica PCA + Clustering dinámico para visualización.
      */
     public List<ChunkDTO> getChunksForVisualization() {
-        log.debug("Consultando chunks para visualización 3D");
+        log.info("Calculando proyección 3D con PCA y Clustering dinámico para vista global");
 
-        return jdbcClient
-                .sql("""
-                        SELECT id,
-                               content,
-                               embedding::text AS emb_text,
-                               metadata->>'file_name' AS doc_name
-                        FROM document_chunks
-                        LIMIT :limit
-                        """)
+        List<RawChunkData> rawData = jdbcClient
+                .sql("SELECT id, content, embedding::text as emb_text, metadata->>'file_name' as doc_name FROM document_chunks LIMIT :limit")
                 .param("limit", MAX_CHUNKS_VISUALIZE)
-                .query((rs, rowNum) -> {
-                    String id = rs.getString("id");
-
-                    String content = rs.getString("content");
-                    if (content != null && content.length() > MAX_CONTENT_PREVIEW) {
-                        content = content.substring(0, MAX_CONTENT_PREVIEW) + "...";
-                    }
-
-                    String docName = rs.getString("doc_name");
-                    if (docName == null) docName = "Desconocido";
-
-                    List<Double> coords = parseFirstThreeDimensions(rs.getString("emb_text"));
-                    return new ChunkDTO(id, content, coords, docName);
-                })
+                .query((rs, rowNum) -> new RawChunkData(
+                        rs.getString("id"),
+                        rs.getString("content"),
+                        parseFullVector(rs.getString("emb_text")),
+                        rs.getString("doc_name")
+                ))
                 .list();
+
+        if (rawData.isEmpty()) return List.of();
+
+        return processAndCluster(rawData);
     }
 
     /**
-     * Recupera todos los chunks asociados a un documento específico.
-     * Utilizado para la vista de "Indexación" aislada.
-     *
-     * @param documentId identificador del documento
-     * @return lista de DTOs con el contenido completo de los chunks
+     * Recupera todos los chunks asociados a un documento con su proyección PCA.
      */
     public List<ChunkDTO> getChunksByDocumentId(String documentId) {
-        log.debug("Consultando chunks para el documento: {}", documentId);
+        log.info("Generando vista de indexación avanzada para el documento: {}", documentId);
 
-        return jdbcClient
-                .sql("""
-                        SELECT id,
-                               content,
-                               embedding::text AS emb_text,
-                               metadata->>'file_name' AS doc_name
-                        FROM document_chunks
-                        WHERE metadata->>'documentId' = :documentId
-                        ORDER BY metadata->>'chunk_index'
-                        """)
+        List<RawChunkData> rawData = jdbcClient
+                .sql("SELECT id, content, embedding::text as emb_text, metadata->>'file_name' as doc_name FROM document_chunks " +
+                     "WHERE metadata->>'documentId' = :documentId ORDER BY metadata->>'chunk_index'")
                 .param("documentId", documentId)
-                .query((rs, rowNum) -> {
-                    String id = rs.getString("id");
-                    String content = rs.getString("content");
-                    
-                    String docName = rs.getString("doc_name");
-                    if (docName == null) docName = "Desconocido";
-
-                    List<Double> coords = parseFirstThreeDimensions(rs.getString("emb_text"));
-                    return new ChunkDTO(id, content, coords, docName);
-                })
+                .query((rs, rowNum) -> new RawChunkData(
+                        rs.getString("id"),
+                        rs.getString("content"),
+                        parseFullVector(rs.getString("emb_text")),
+                        rs.getString("doc_name")
+                ))
                 .list();
+
+        if (rawData.isEmpty()) return List.of();
+
+        return processAndCluster(rawData);
     }
 
-    /**
-     * Extrae las primeras 3 dimensiones de un vector PGVector (formato "[d1,d2,d3,...]")
-     * para proyección en espacio 3D.
-     */
-    private List<Double> parseFirstThreeDimensions(String embText) {
-        if (embText == null || embText.length() <= 2) {
-            return List.of(0.0, 0.0, 0.0);
+    private List<ChunkDTO> processAndCluster(List<RawChunkData> rawData) {
+        // 1. Reducción de Dimensiones (PCA: 1536 -> 3)
+        double[][] matrix = pcaService.convertToMatrix(rawData.stream().map(r -> r.vector).toList());
+        double[][] projected = pcaService.projectTo3D(matrix);
+
+        // 2. Clustering (KMeans++ con k dinámico)
+        int k = Math.min(6, Math.max(2, rawData.size() / 15));
+        int[] clusterAssignments = clusteringService.cluster(projected, k);
+
+        // 3. Agrupar contenidos por cluster para nombres descriptivos
+        Map<Integer, List<String>> clusterContents = new HashMap<>();
+        for (int i = 0; i < rawData.size(); i++) {
+            clusterContents.computeIfAbsent(clusterAssignments[i], v -> new ArrayList<>()).add(rawData.get(i).content);
         }
+        
+        Map<Integer, String> clusterNames = new HashMap<>();
+        for (int i = 0; i < k; i++) {
+            clusterNames.put(i, clusteringService.generateClusterName(i, clusterContents.getOrDefault(i, List.of())));
+        }
+
+        // 4. Construir DTOs
+        List<ChunkDTO> result = new ArrayList<>();
+        for (int i = 0; i < rawData.size(); i++) {
+            RawChunkData raw = rawData.get(i);
+            int clusterIdx = clusterAssignments[i];
+            
+            result.add(new ChunkDTO(
+                    raw.id,
+                    truncateContent(raw.content),
+                    Arrays.stream(projected[i]).boxed().toList(),
+                    raw.docName != null ? raw.docName : "Desconocido",
+                    clusterNames.get(clusterIdx),
+                    clusteringService.getColor(clusterIdx)
+            ));
+        }
+        return result;
+    }
+
+    private List<Double> parseFullVector(String embText) {
+        if (embText == null || embText.length() <= 2) return new ArrayList<>(Collections.nCopies(1536, 0.0));
         try {
             String clean = embText.substring(1, embText.length() - 1);
             return Arrays.stream(clean.split(","))
-                    .limit(3)
                     .map(String::trim)
                     .map(Double::parseDouble)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            log.warn("No se pudo parsear el vector de embedding, usando coordenadas por defecto", e);
-            return List.of(0.0, 0.0, 0.0);
+            log.warn("Error parseando vector, usando vector nulo", e);
+            return new ArrayList<>(Collections.nCopies(1536, 0.0));
         }
     }
+
+    private String truncateContent(String content) {
+        if (content != null && content.length() > MAX_CONTENT_PREVIEW) {
+            return content.substring(0, MAX_CONTENT_PREVIEW) + "...";
+        }
+        return content;
+    }
+
+    private record RawChunkData(String id, String content, List<Double> vector, String docName) {}
 }
