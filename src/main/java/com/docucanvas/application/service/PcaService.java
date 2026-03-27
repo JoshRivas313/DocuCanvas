@@ -42,26 +42,27 @@ public class PcaService {
             }
         }
 
-        // 2. Crear Matriz y calcular Covarianza (Simplificado: X^T * X / (n-1))
+        // 2. Usar SVD (Singular Value Decomposition) para Proyección
+        // Para pocos componentes (3), SVD es usualmente más estable y rápido que EigenDecomposition de la Covarianza
         RealMatrix matrix = MatrixUtils.createRealMatrix(centered);
-        // Usamos RealMatrix.multiply para obtener la matriz de covarianza
-        // Cov = (1/(n-1)) * X^T * X
-        RealMatrix covariance = matrix.transpose().multiply(matrix).scalarMultiply(1.0 / (n - 1));
-
-        // 3. Eigen Decomposition
-        EigenDecomposition decomposition = new EigenDecomposition(covariance);
+        SingularValueDecomposition svd = new SingularValueDecomposition(matrix);
         
-        // 4. Obtener los 3 componentes principales (autovectores de los 3 mayores autovalores)
-        RealMatrix projectionMatrix = MatrixUtils.createRealMatrix(d, 3);
-        for (int i = 0; i < 3; i++) {
-            projectionMatrix.setColumnVector(i, decomposition.getEigenvector(i));
+        // El resultado de la proyección son los primeros 3 componentes de U * S
+        RealMatrix u = svd.getU();
+        RealMatrix s = svd.getS();
+        
+        // Proyectamos: tomamos las primeras 3 columnas de U y las escalamos por los valores singulares
+        double[][] projected = new double[n][3];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (j < s.getRowDimension()) {
+                    projected[i][j] = u.getEntry(i, j) * s.getEntry(j, j);
+                }
+            }
         }
-
-        // 5. Proyectar los datos originales al nuevo espacio 3D
-        RealMatrix result = matrix.multiply(projectionMatrix);
         
-        log.info("PCA completado con éxito");
-        return result.getData();
+        log.info("PCA (SVD) completado con éxito");
+        return projected;
     }
     
     /**

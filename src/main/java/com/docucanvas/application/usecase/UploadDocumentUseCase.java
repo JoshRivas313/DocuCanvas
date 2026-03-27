@@ -27,16 +27,16 @@ public class UploadDocumentUseCase {
     public Document execute(MultipartFile file, String title) {
         try {
             String sourceType = getFileExtension(file.getOriginalFilename());
-            Document document = new Document(
-                    UUID.randomUUID(),
-                    title != null ? title : file.getOriginalFilename(),
-                    sourceType,
-                    DocumentStatus.PENDING,
-                    0,
-                    List.of(),
-                    Instant.now(),
-                    Instant.now()
-            );
+            Document document = Document.builder()
+                    .id(UUID.randomUUID())
+                    .title(title != null ? title : file.getOriginalFilename())
+                    .sourceType(sourceType)
+                    .status(DocumentStatus.PENDING)
+                    .chunkCount(0)
+                    .tags(List.of())
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
 
             Document saved = documentRepository.save(document);
             

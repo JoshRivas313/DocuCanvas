@@ -41,6 +41,7 @@ public class IngestionService {
 
         try {
             domainDocument.setStatus(DocumentStatus.PROCESSING);
+            domainDocument.setFileContent(fileContent);
             documentRepository.save(domainDocument);
 
             // 1. Extraer Texto con Tika

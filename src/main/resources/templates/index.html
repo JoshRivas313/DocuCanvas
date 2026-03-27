@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{fragments/head :: head}"></head>
+<body x-data="docApp()" class="min-h-screen custom-scrollbar">
+
+    <!-- Navigation Header -->
+    <header th:replace="~{fragments/header :: header}"></header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-[95vw] mx-auto p-4 lg:p-6 mt-4">
+        
+        <!-- View Fragments -->
+        <div th:replace="~{fragments/upload_view :: upload_view}"></div>
+        <div th:replace="~{fragments/indexing_view :: indexing_view}"></div>
+        <div th:replace="~{fragments/ask_view :: ask_view}"></div>
+        <div th:replace="~{fragments/pipeline_view :: pipeline_view}"></div>
+        <div th:replace="~{fragments/chunks_view :: chunks_view}"></div>
+
+    </main>
+
+    <!-- Alpine.js Application Logic -->
+    <script>
+        function docApp() {
+            return {
+                view: 'upload',
+                indexingSubView: 'chunks', // 'chunks' or 'preview'
+                loading: false,
+                question: '',
+                textIngest: { title: '', content: '' },
+                documents: [],
+                dragOver: false,
+                chatHistory: [
+                    { role: 'ai', content: '¡Hola! Soy tu asistente DocuCanvas. Sube un documento o selecciona uno existente para comenzar el análisis.' }
+                ],
+                
+                // Visualization State
+                chunksData: [],
+                loadingChunks: false,
+                chunksLoaded: false,
+                selectedDocument: '',
+                hoveredChunk: null,
+                selectedChunkId: null,
+
+                // Indexing View State
+                selectedDocId: null,
+                selectedDocTitle: '',
+                selectedDocSourceType: '',
+                documentChunks: [],
+                loadingDocChunks: false,
+
+                // Computed Properties
+                get uniqueDocuments() {
+                    return [...new Set(this.chunksData.map(c => c.documentName).filter(n => n && n !== 'Desconocido'))];
+                },
+
+                get filteredChunks() {
+                    const data = this.chunksData || [];
+                    if (!this.selectedDocument) return data;
+                    return data.filter(c => c.documentName === this.selectedDocument);
+                },
+
+                get clusterGroups() {
+                    const counts = {};
+                    const firstChunks = {};
+                    this.filteredChunks.forEach(c => {
+                        counts[c.clusterName] = (counts[c.clusterName] || 0) + 1;
+                        if (!firstChunks[c.clusterName]) firstChunks[c.clusterName] = c;
+                    });
+                    return Object.keys(counts).map(name => ({
+                        name: name,
+                        count: counts[name],
+                        color: firstChunks[name].clusterColor,
+                        preview: firstChunks[name].content.substring(0, 45).replace(/\n/g, ' ')
+                    })).sort((a, b) => b.count - a.count);
+                },
+
+                // Initialization
+                init() {
+                    this.loadDocuments();
+                    setInterval(() => {
+                        if (this.view === 'upload' || this.view === 'indexing') {
+                            this.loadDocuments();
+                        }
+                    }, 5000);
+                },
+
+                // API Actions
+                async loadDocuments() {
+                    try {
+                        const res = await fetch('/api/v1/documents');
+                        if (res.ok) {
+                            const data = await res.json();
+                            // Only update if changed to avoid UI flickering
+                            if (JSON.stringify(data) !== JSON.stringify(this.documents)) {
+                                this.documents = data;
+                            }
+                        }
+                    } catch (e) { console.error('Error loading documents:', e); }
+                },
+
+                async uploadFile(file) {
+                    this.loading = true;
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('title', file.name);
+                    try {
+                        const res = await fetch('/api/v1/documents/upload', { method: 'POST', body: formData });
+                        if (res.ok) {
+                            this.loadDocuments();
+                            const job = await res.json();
+                            // Optional: wait for job or just notify
+                        }
+                    } catch (e) { console.error('Upload error:', e); }
+                    finally { this.loading = false; }
+                },
+
+                async ingestText() {
+                    if (!this.textIngest.title || !this.textIngest.content) return;
+                    this.loading = true;
+                    try {
+                        const res = await fetch('/api/v1/documents/import-text', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ...this.textIngest, sourceType: 'TEXT' })
+                        });
+                        if (res.ok) {
+                            this.textIngest = { title: '', content: '' };
+                            this.loadDocuments();
+                        }
+                    } catch (e) { console.error('Ingestion error:', e); }
+                    finally { this.loading = false; }
+                },
+
+                async fetchDocumentChunks(docId, docTitle) {
+                    this.selectedDocId = docId;
+                    this.selectedDocTitle = docTitle;
+                    const doc = this.documents.find(d => d.id === docId);
+                    this.selectedDocSourceType = doc ? doc.sourceType.toUpperCase() : '';
+                    this.loadingDocChunks = true;
+                    this.documentChunks = [];
+                    try {
+                        const res = await fetch(`/api/v1/chunks/document/${docId}`);
+                        if (res.ok) this.documentChunks = await res.json();
+                    } catch (e) { console.error('Error fetching chunks:', e); }
+                    finally { this.loadingDocChunks = false; }
+                },
+
+                async fetchChunks() {
+                    this.loadingChunks = true;
+                    try {
+                        const res = await fetch('/api/v1/chunks/visualize');
+                        if (res.ok) {
+                            this.chunksData = await res.json();
+                            this.chunksLoaded = true;
+                            // Small delay to ensure DOM is ready for Plotly
+                            setTimeout(() => this.render3DMap(), 100);
+                        }
+                    } catch (e) { console.error('Viz fetch error:', e); }
+                    finally { this.loadingChunks = false; }
+                },
+
+                async askQuestion() {
+                    if (!this.question.trim()) return;
+                    const q = this.question;
+                    this.chatHistory.push({ role: 'user', content: q });
+                    this.question = '';
+                    this.loading = true;
+                    
+                    // Scroll to bottom
+                    this.$nextTick(() => {
+                        const chat = document.getElementById('chatbox');
+                        if(chat) chat.scrollTop = chat.scrollHeight;
+                    });
+
+                    try {
+                        const res = await fetch('/api/v1/questions/ask', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ question: q, maxChunks: 5 })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.chatHistory.push({
+                                role: 'ai',
+                                content: data.answer,
+                                sources: data.sources,
+                                imageUrl: data.imageUrl
+                            });
+                        } else {
+                            throw new Error('API Error');
+                        }
+                    } catch (e) {
+                         this.chatHistory.push({ role: 'ai', content: 'Lo siento, hubo un error al procesar tu pregunta. Verifica la conexión con el servidor.' });
+                    } finally {
+                        this.loading = false;
+                        this.$nextTick(() => {
+                            const chat = document.getElementById('chatbox');
+                            if(chat) chat.scrollTop = chat.scrollHeight;
+                        });
+                    }
+                },
+
+                // UI Helpers
+                render3DMap() {
+                    const plotDiv = document.getElementById('plotly-3d-map');
+                    if (!plotDiv) return;
+
+                    const dataToRender = this.filteredChunks;
+                    if (dataToRender.length === 0) {
+                        Plotly.newPlot(plotDiv, [], { 
+                            paper_bgcolor: 'rgba(0,0,0,0)', 
+                            scene: { xaxis: {visible: false}, yaxis: {visible: false}, zaxis: {visible: false} },
+                            annotations: [{ text: "Sin datos para este filtro", showarrow: false, font: {color: '#475569', size: 16} }]
+                        });
+                        return;
+                    }
+
+                    const clusters = {};
+                    dataToRender.forEach(c => {
+                        if (!clusters[c.clusterName]) clusters[c.clusterName] = [];
+                        clusters[c.clusterName].push(c);
+                    });
+
+                    const traces = Object.keys(clusters).map(name => {
+                        const pts = clusters[name];
+                        return {
+                            name: name,
+                            x: pts.map(p => p.coordinates[0]),
+                            y: pts.map(p => p.coordinates[1]),
+                            z: pts.map(p => p.coordinates[2]),
+                            customData: pts,
+                            type: 'scatter3d',
+                            mode: 'markers',
+                            marker: {
+                                size: 6,
+                                color: pts[0].clusterColor,
+                                opacity: 0.8,
+                                line: { color: 'rgba(255,255,255,0.05)', width: 0.5 }
+                            },
+                            hoverinfo: 'none'
+                        };
+                    });
+
+                    const layout = {
+                        margin: { l: 0, r: 0, b: 0, t: 0 },
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        showlegend: false,
+                        scene: {
+                            xaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.02)', zeroline: false, showticklabels: false, title: '' },
+                            yaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.02)', zeroline: false, showticklabels: false, title: '' },
+                            zaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.02)', zeroline: false, showticklabels: false, title: '' },
+                            bgcolor: '#020617',
+                            camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } }
+                        }
+                    };
+
+                    Plotly.newPlot(plotDiv, traces, layout, { responsive: true, displayModeBar: false });
+
+                    plotDiv.on('plotly_hover', (data) => {
+                        this.hoveredChunk = data.points[0].fullData.customData[data.points[0].pointNumber];
+                    });
+                    plotDiv.on('plotly_unhover', () => { this.hoveredChunk = null; });
+                    plotDiv.on('plotly_click', (data) => {
+                        const chunk = data.points[0].fullData.customData[data.points[0].pointNumber];
+                        this.selectChunk(chunk);
+                    });
+                },
+
+                selectChunk(chunk) {
+                    this.selectedChunkId = chunk.id;
+                },
+
+                handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) this.uploadFile(file);
+                },
+
+                handleDrop(event) {
+                    this.dragOver = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file) this.uploadFile(file);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

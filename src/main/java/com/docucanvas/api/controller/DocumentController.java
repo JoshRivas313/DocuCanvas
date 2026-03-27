@@ -42,18 +42,19 @@ public class DocumentController {
 
     @PostMapping("/documents/import-text")
     public ResponseEntity<Document> importText(@RequestBody TextImportRequest request) {
-        Document doc = new Document(
-                UUID.randomUUID(),
-                request.title(),
-                request.sourceType() != null ? request.sourceType() : "TEXT",
-                DocumentStatus.PENDING,
-                0,
-                List.of(),
-                Instant.now(),
-                Instant.now()
-        );
-        Document saved = documentRepository.save(doc);
+        Document doc = Document.builder()
+                .id(UUID.randomUUID())
+                .title(request.title())
+                .sourceType(request.sourceType() != null ? request.sourceType() : "TEXT")
+                .status(DocumentStatus.PENDING)
+                .chunkCount(0)
+                .tags(List.of())
+                .fileContent(request.content().getBytes())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
         
+        Document saved = documentRepository.save(doc);
         ingestionService.processIngestion(saved.getId(), request.content().getBytes(), "text.txt");
         
         return ResponseEntity.ok(saved);
@@ -77,6 +78,26 @@ public class DocumentController {
                         doc.getId(), doc.getId(), doc.getStatus(), doc.getChunkCount(), 
                         null, doc.getCreatedAt(), doc.getUpdatedAt()))
                 .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/documents/{id}/file")
+    public ResponseEntity<byte[]> getDocumentFile(@PathVariable UUID id) {
+        return documentRepository.findById(id)
+                .filter(doc -> doc.getFileContent() != null)
+                .map(doc -> {
+                    String contentType = switch (doc.getSourceType().toUpperCase()) {
+                        case "PDF" -> "application/pdf";
+                        case "DOCX" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                        case "TXT", "TEXT" -> "text/plain";
+                        default -> "application/octet-stream";
+                    };
+                    
+                    return ResponseEntity.ok()
+                            .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, contentType)
+                            .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.getTitle() + "\"")
+                            .body(doc.getFileContent());
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 

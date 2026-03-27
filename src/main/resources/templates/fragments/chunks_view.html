@@ -1,0 +1,121 @@
+<!-- templates/fragments/chunks_view.html -->
+<div th:fragment="chunks_view" x-show="view === 'chunks'" x-transition x-cloak>
+    <div class="flex flex-col lg:flex-row gap-6">
+        
+        <!-- Sidebar Unificado (25% en LG) -->
+        <div class="w-full lg:w-1/4 flex flex-col gap-6">
+            
+            <!-- Panel de Control y Filtros -->
+            <div class="glass p-5 rounded-2xl space-y-4 border-sky-500/10">
+                <div class="flex items-center gap-3 border-b border-white/5 pb-3">
+                    <span class="text-xl">📁</span>
+                    <select x-model="selectedDocument" @change="render3DMap()"
+                        class="bg-transparent border-none text-sky-400 font-bold outline-none cursor-pointer text-sm flex-1">
+                        <option value="" class="bg-slate-900 text-white">Todos los contenidos</option>
+                        <template x-for="doc in uniqueDocuments" :key="doc">
+                            <option :value="doc" x-text="doc" class="bg-slate-900 text-white"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <!-- Estadísticas Rápidas -->
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                        <p class="text-[9px] text-slate-500 uppercase font-black">Total Chunks</p>
+                        <p class="text-xl font-bold text-sky-400" x-text="filteredChunks.length">0</p>
+                    </div>
+                    <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                        <p class="text-[9px] text-slate-500 uppercase font-black">Clusters</p>
+                        <p class="text-xl font-bold text-indigo-400" x-text="clusterGroups.length">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leyenda de Clusters (Dynamic Data) -->
+            <div class="glass p-5 rounded-2xl flex-1 flex flex-col min-h-[45vh] border-white/5">
+                <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Temas Semánticos</h3>
+                <div class="space-y-2 overflow-y-auto pr-2 max-h-[30vh] custom-scrollbar">
+                    <template x-for="group in clusterGroups" :key="group.name">
+                        <div class="flex flex-col gap-1 p-2 rounded-lg hover:bg-white/5 transition group cursor-default border border-transparent hover:border-white/5">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full" :style="'background-color: ' + group.color"></span>
+                                    <span class="text-[11px] font-bold text-slate-200" x-text="group.name"></span>
+                                </div>
+                                <span class="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-slate-400" x-text="group.count"></span>
+                            </div>
+                            <p class="text-[9px] text-slate-500 italic truncate pl-4" x-text="'&quot;' + group.preview + '...&quot;'"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Lista de Chunks (Mini Inspector) -->
+                <div class="mt-6 pt-4 border-t border-white/5 flex-1 min-h-0 flex flex-col overflow-hidden">
+                    <h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">Fragmentos en Vista</h3>
+                    <div class="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                        <template x-for="chunk in filteredChunks" :key="chunk.id">
+                            <div @click="selectChunk(chunk)" 
+                                :class="selectedChunkId === chunk.id ? 'border-sky-500 bg-sky-900/40' : 'border-white/5 hover:bg-white/10'"
+                                class="p-2 border rounded-lg transition cursor-pointer text-[10px] leading-tight">
+                                <p class="text-slate-400 line-clamp-2" x-text="chunk.content"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor Principal: Mapa 3D (75% en LG) -->
+        <div class="flex-1 lg:w-3/4 flex flex-col gap-4">
+            <div class="glass rounded-3xl relative overflow-hidden border-2 border-white/5 shadow-2xl bg-[#020617]" style="height: 75vh;">
+                
+                <!-- Loading Overlay -->
+                <div x-show="loadingChunks"
+                    class="absolute inset-0 flex items-center justify-center bg-slate-900/95 z-40 backdrop-blur-md">
+                    <div class="flex flex-col items-center gap-4">
+                        <div class="relative">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-500"></div>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <span class="text-[8px] font-bold text-sky-400">PCA</span>
+                            </div>
+                        </div>
+                        <p class="text-sky-400 font-bold animate-pulse tracking-widest text-[10px] uppercase">Analizando Espacio Latente</p>
+                    </div>
+                </div>
+                
+                <!-- El Plotly Canvas -->
+                <div id="plotly-3d-map" class="w-full h-full"></div>
+                
+                <!-- Overlay de Información Flotante -->
+                <div x-show="hoveredChunk" x-transition 
+                    class="absolute top-6 right-6 glass p-5 rounded-2xl max-w-sm border-sky-500/50 shadow-2xl z-30 pointer-events-none backdrop-blur-xl">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-2.5 h-2.5 rounded-full" :style="'background-color: ' + hoveredChunk.clusterColor"></span>
+                        <p class="text-[10px] font-bold text-sky-400 uppercase tracking-widest" x-text="hoveredChunk.clusterName"></p>
+                    </div>
+                    <p class="text-xs text-slate-100 leading-relaxed font-serif italic" x-text="'&quot;' + hoveredChunk.content + '&quot;'"></p>
+                    <div class="mt-3 pt-3 border-t border-white/10 flex justify-between items-center text-[9px] text-slate-500 font-bold">
+                        <span x-text="hoveredChunk.documentName"></span>
+                        <span x-text="'ID: ' + hoveredChunk.id.substring(0,8)"></span>
+                    </div>
+                </div>
+
+                <!-- Botón Refrescar Flotante -->
+                <button @click="fetchChunks()" 
+                    class="absolute bottom-6 left-6 p-4 bg-slate-800/90 hover:bg-sky-600 rounded-full transition shadow-xl border border-white/10 z-30 group">
+                    <svg class="w-5 h-5 text-white group-hover:rotate-180 transition duration-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                </button>
+            </div>
+
+            <!-- Ayuda Visual -->
+            <div class="flex justify-center gap-8 py-2 opacity-40 hover:opacity-100 transition">
+                <div class="flex items-center gap-2 text-[8px] text-slate-500 font-bold uppercase tracking-widest">
+                    <span class="bg-slate-800 px-1.5 py-0.5 rounded border border-white/10">Click</span> Seleccionar
+                </div>
+                <div class="flex items-center gap-2 text-[8px] text-slate-500 font-bold uppercase tracking-widest">
+                    <span class="bg-slate-800 px-1.5 py-0.5 rounded border border-white/10">Scroll</span> Zoom
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

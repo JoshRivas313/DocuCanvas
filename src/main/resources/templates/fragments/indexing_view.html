@@ -1,0 +1,87 @@
+<!-- templates/fragments/indexing_view.html -->
+<div th:fragment="indexing_view" x-show="view === 'indexing'" x-transition x-cloak>
+    <div class="glass p-8 rounded-2xl shadow-2xl min-h-[75vh] flex flex-col gap-6">
+        
+        <div class="flex flex-col md:flex-row gap-6 h-[70vh]">
+            <!-- Sidebar: Lista de Documentos -->
+            <div class="w-full md:w-1/4 space-y-4 border-r border-white/5 pr-6 overflow-y-auto custom-scrollbar">
+                <h2 class="text-2xl font-bold gradient-text">Indexación</h2>
+                <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Archivos en el Sistema</p>
+                
+                <div class="mt-4 space-y-2">
+                    <template x-for="doc in documents" :key="doc.id">
+                        <div @click="fetchDocumentChunks(doc.id, doc.title)"
+                            :class="selectedDocId === doc.id ? 'border-sky-500 bg-sky-900/30 ring-1 ring-sky-500/50' : 'border-white/10 hover:bg-white/5'"
+                            class="p-3 border rounded-xl cursor-pointer transition flex items-center gap-3 relative overflow-hidden group">
+                            <div class="text-xl">📄</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-bold text-slate-200 text-xs truncate" x-text="doc.title"></p>
+                                <p class="text-[9px] text-slate-500" x-text="doc.sourceType + ' • ' + doc.chunkCount + ' chunks'"></p>
+                            </div>
+                            <!-- Abrir PDF icon if selected -->
+                            <template x-if="selectedDocId === doc.id && doc.sourceType === 'PDF'">
+                                <span class="text-sky-400 animate-pulse">👁️</span>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Contenido: Chunks vs Preview PDF -->
+            <div class="w-full md:w-3/4 flex flex-col gap-4 overflow-hidden">
+                
+                <div x-show="!selectedDocId" class="flex-1 flex items-center justify-center text-slate-500 glass rounded-xl border-dashed">
+                    <div class="text-center">
+                        <div class="text-4xl mb-4 opacity-20">📂</div>
+                        <p class="font-bold">Selecciona un documento para inspeccionar su estructura</p>
+                        <p class="text-xs">Podrás ver los fragmentos vectorizados y el archivo original.</p>
+                    </div>
+                </div>
+
+                <div x-show="selectedDocId" class="flex-1 flex flex-col gap-4 min-h-0">
+                    <!-- Tabs -->
+                    <div class="flex gap-4 border-b border-white/10 pb-2">
+                        <button @click="indexingSubView = 'chunks'" 
+                                :class="indexingSubView === 'chunks' ? 'text-sky-400 border-b-2 border-sky-400' : 'text-slate-500'"
+                                class="px-4 py-2 font-bold text-sm">Fragmentos (Chunks)</button>
+                        <button @click="indexingSubView = 'preview'" 
+                                :class="indexingSubView === 'preview' ? 'text-sky-400 border-b-2 border-sky-400' : 'text-slate-500'"
+                                class="px-4 py-2 font-bold text-sm">Previsualización PDF</button>
+                    </div>
+
+                    <!-- SubView: Chunks -->
+                    <div x-show="indexingSubView === 'chunks'" class="flex-1 overflow-y-auto pr-4 custom-scrollbar">
+                        <div class="grid gap-4">
+                            <template x-for="(chunk, index) in documentChunks" :key="chunk.id">
+                                <div class="glass p-5 rounded-xl border-l-4 border-sky-500 hover:border-indigo-400 transition group relative">
+                                    <div class="absolute -left-[14px] -top-3 bg-sky-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-slate-900">
+                                        <span x-text="index + 1"></span>
+                                    </div>
+                                    <div class="flex justify-between items-start mb-2">
+                                        <p class="text-[9px] text-sky-400 font-mono" x-text="'ID: ' + chunk.id.substring(0,20)"></p>
+                                    </div>
+                                    <p class="text-sm text-slate-300 leading-relaxed" x-text="chunk.content"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- SubView: PDF Preview -->
+                    <div x-show="indexingSubView === 'preview'" class="flex-1 glass rounded-xl overflow-hidden relative">
+                        <iframe :src="'/api/v1/documents/' + selectedDocId + '/file'" 
+                                class="w-full h-full border-none bg-slate-800"
+                                type="application/pdf"></iframe>
+                        
+                        <div x-show="selectedDocSourceType !== 'PDF'" class="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-10">
+                             <div class="text-center p-6">
+                                 <p class="text-slate-300 mb-4">La previsualización interactiva solo está disponible para PDFs.</p>
+                                 <a :href="'/api/v1/documents/' + selectedDocId + '/file'" 
+                                    class="bg-sky-600 px-4 py-2 rounded-lg font-bold hover:bg-sky-500 transition">Descargar Archivo</a>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

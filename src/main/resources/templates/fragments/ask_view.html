@@ -1,0 +1,59 @@
+<!-- templates/fragments/ask_view.html -->
+<div th:fragment="ask_view" x-show="view === 'ask'" x-transition x-cloak>
+    <div class="flex flex-col h-[75vh] glass rounded-2xl overflow-hidden shadow-2xl relative">
+        <!-- Chat Area -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-900/50 custom-scrollbar" id="chatbox">
+            <template x-for="msg in chatHistory">
+                <div :class="msg.role === 'user' ? 'justify-end' : 'justify-start'" class="flex">
+                    <div :class="msg.role === 'user' ? 'bg-sky-600 rounded-tr-none' : 'glass rounded-tl-none border-white/5'"
+                        class="max-w-[80%] p-4 rounded-2xl shadow-lg relative group">
+                        
+                        <p class="text-sm leading-relaxed" x-text="msg.content"></p>
+                        
+                        <template x-if="msg.imageUrl">
+                            <div class="mt-4 relative group">
+                                <img :src="msg.imageUrl"
+                                    class="rounded-xl shadow-2xl max-w-full mx-auto border border-white/10 transition-transform hover:scale-105">
+                                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 pointer-events-none">
+                                     <span class="bg-white/10 backdrop-blur px-2 py-1 rounded text-[10px] font-bold">IA Generated</span>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template x-if="msg.sources && msg.sources.length > 0">
+                            <div class="mt-3 pt-2 border-t border-white/10">
+                                <p class="text-[10px] uppercase font-bold text-slate-500">Fuentes Citadas:</p>
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    <template x-for="src in msg.sources">
+                                        <span class="text-[9px] bg-sky-900/40 text-sky-300 border border-sky-500/20 px-2 py-0.5 rounded cursor-help"
+                                              :title="src" x-text="src.substring(0,12) + '...'"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+            <div x-show="loading" class="flex justify-start">
+                <div class="glass p-4 rounded-2xl animate-pulse text-sky-400 font-bold border-sky-500/30">DocuCanvas está pensando...</div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-6 border-t border-white/5 glass bg-slate-900/80 backdrop-blur-md">
+            <div class="flex gap-3 max-w-4xl mx-auto">
+                <input x-model="question" @keyup.enter="askQuestion()" type="text"
+                    placeholder="Escribe tu pregunta aquí..."
+                    class="flex-1 bg-slate-800/80 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 focus:ring-sky-500 transition-all shadow-inner">
+                <button @click="askQuestion()" :disabled="loading"
+                    class="bg-sky-600 p-4 rounded-xl hover:bg-sky-500 transition disabled:opacity-50 shadow-lg hover:shadow-sky-500/20 flex items-center gap-2 font-bold">
+                    <span x-show="!loading">Preguntar</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -16,18 +16,20 @@ public class Document {
     private DocumentStatus status;
     private Integer chunkCount;
     private List<String> tags;
+    private byte[] fileContent;
     private Instant createdAt;
     private Instant updatedAt;
 
     public Document() {}
 
-    public Document(UUID id, String title, String sourceType, DocumentStatus status, Integer chunkCount, List<String> tags, Instant createdAt, Instant updatedAt) {
+    public Document(UUID id, String title, String sourceType, DocumentStatus status, Integer chunkCount, List<String> tags, byte[] fileContent, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.title = title;
         this.sourceType = sourceType;
         this.status = status;
         this.chunkCount = chunkCount;
         this.tags = tags;
+        this.fileContent = fileContent;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -48,6 +50,8 @@ public class Document {
     public void setChunkCount(Integer chunkCount) { this.chunkCount = chunkCount; }
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
+    public byte[] getFileContent() { return fileContent; }
+    public void setFileContent(byte[] fileContent) { this.fileContent = fileContent; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
@@ -60,6 +64,7 @@ public class Document {
         private DocumentStatus status;
         private Integer chunkCount;
         private List<String> tags;
+        private byte[] fileContent;
         private Instant createdAt;
         private Instant updatedAt;
 
@@ -69,11 +74,12 @@ public class Document {
         public DocumentBuilder status(DocumentStatus status) { this.status = status; return this; }
         public DocumentBuilder chunkCount(Integer chunkCount) { this.chunkCount = chunkCount; return this; }
         public DocumentBuilder tags(List<String> tags) { this.tags = tags; return this; }
+        public DocumentBuilder fileContent(byte[] fileContent) { this.fileContent = fileContent; return this; }
         public DocumentBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
         public DocumentBuilder updatedAt(Instant updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public Document build() {
-            return new Document(id, title, sourceType, status, chunkCount, tags, createdAt, updatedAt);
+            return new Document(id, title, sourceType, status, chunkCount, tags, fileContent, createdAt, updatedAt);
         }
     }
 }

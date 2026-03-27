@@ -1,0 +1,68 @@
+<!-- templates/fragments/upload_view.html -->
+<div th:fragment="upload_view" x-show="view === 'upload'" x-transition x-cloak>
+    <div class="glass p-8 rounded-2xl shadow-2xl">
+        <h2 class="text-3xl font-bold mb-6">Alimentar el Cerebro</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Text Ingestion -->
+            <div class="space-y-4">
+                <h3 class="text-xl font-semibold text-sky-400">Texto Directo</h3>
+                <input x-model="textIngest.title" type="text" placeholder="Título del texto..."
+                    class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-500">
+                <textarea x-model="textIngest.content" rows="6" placeholder="Pega el contenido aquí..."
+                    class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-500"></textarea>
+                <button @click="ingestText()" :disabled="loading"
+                    class="w-full bg-sky-600 hover:bg-sky-500 py-3 rounded-lg font-bold transition disabled:opacity-50">
+                    <span x-show="!loading">Empezar Indexación</span>
+                    <span x-show="loading">Procesando...</span>
+                </button>
+            </div>
+            <!-- File Ingestion -->
+            <div @click="$refs.fileInput.click()" @dragover.prevent="dragOver = true"
+                @dragleave.prevent="dragOver = false" @drop.prevent="handleDrop($event)"
+                :class="dragOver ? 'border-sky-500 bg-sky-500/10' : 'border-white/10 bg-white/5'"
+                class="border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-8 hover:bg-white/10 transition cursor-pointer relative group">
+
+                <input type="file" x-ref="fileInput" @change="handleFileUpload($event)" class="hidden">
+
+                <svg class="w-12 h-12 text-slate-500 mb-4 group-hover:text-sky-400 transition" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                    </path>
+                </svg>
+                <p class="text-slate-400 font-medium">Arrastra o haz clic para subir</p>
+                <span class="text-xs text-slate-500 mt-2">PDF, DOCX, TXT (Max 10MB)</span>
+
+                <div x-show="loading"
+                    class="absolute inset-0 bg-slate-900/80 rounded-2xl flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Documents -->
+        <div class="mt-12">
+            <h3 class="text-xl font-semibold mb-4">Documentos Indexados</h3>
+            <div class="grid gap-4">
+                <template x-for="doc in documents" :key="doc.id">
+                    <div
+                        class="glass p-4 rounded-xl flex justify-between items-center border-l-4 border-emerald-500">
+                        <div>
+                            <p class="font-bold text-slate-200" x-text="doc.title"></p>
+                            <p class="text-xs text-slate-500" x-text="doc.sourceType"></p>
+                        </div>
+                        <div class="text-right flex items-center gap-4">
+                            <span
+                                class="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full font-bold"
+                                x-text="doc.status"></span>
+                             <button @click="view = 'indexing'; fetchDocumentChunks(doc.id, doc.title)" 
+                                     class="text-sky-400 hover:text-sky-300 text-xs font-bold underline">Inspeccionar</button>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="documents.length === 0" class="text-slate-500 italic py-4">No hay documentos para
+                    procesar.</div>
+            </div>
+        </div>
+    </div>
+</div>
