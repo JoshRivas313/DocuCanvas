@@ -202,15 +202,15 @@
                     <div class="sticky top-0 bg-slate-900 z-20 pb-4 border-b border-white/10">
                         <h3 class="text-xl font-bold gradient-text mb-4">Inspector Semántico</h3>
                         <div class="space-y-3">
-                            <input x-model="searchQuery" @keyup.enter="performSearch()" type="text" placeholder="🔍 Simular búsqueda RAG..." class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-500 text-sm">
-                            <div class="flex gap-2 text-[10px] flex-wrap font-bold" x-show="uniqueDocuments.length > 0">
+                            <select x-model="selectedDocument" @change="filterByDocument()" class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold text-indigo-300 transition cursor-pointer">
+                                <option value="">🌍 Todos los Documentos Indexados</option>
                                 <template x-for="doc in uniqueDocuments" :key="doc">
-                                    <button @click="selectedDocument = doc; filterByDocument()" 
-                                            :class="selectedDocument === doc ? 'bg-rose-500 text-white border-rose-400' : 'bg-sky-900/50 hover:bg-sky-500/50 text-sky-200 border-sky-500/30'" 
-                                            class="px-2 py-1 rounded border transition" 
-                                            x-text="doc.substring(0,25) + (doc.length > 25 ? '...' : '')"></button>
+                                    <option :value="doc" x-text="doc.substring(0,35) + (doc.length > 35 ? '...' : '')"></option>
                                 </template>
-                                <button x-show="selectedDocument !== '' || highlightedChunkIds.length > 0" @click="resetSearch()" class="px-2 py-1 text-rose-400 hover:text-rose-300 transition px-2 py-1 rounded border border-rose-500/30">Limpiar</button>
+                            </select>
+                            
+                            <div class="flex gap-2 text-[10px] flex-wrap font-bold" x-show="selectedDocument !== ''">
+                                <button @click="resetSearch()" class="px-3 py-1.5 bg-rose-900/40 text-rose-400 hover:bg-rose-500 hover:text-white transition rounded-md border border-rose-500/50 shadow-sm">♻️ Restablecer Vista</button>
                             </div>
                         </div>
                     </div>
