@@ -205,15 +205,35 @@ Documentación técnica de todos los endpoints disponibles, detallando el contra
 
 ---
 
-## 🖼️ Vistas de la Aplicación
+## 🖼️ Vistas de la Aplicación (Módulos de la Demo)
 
-A través de la interfaz superior, puedes navegar por los diferentes módulos de la demo:
+DocuCanvas ofrece una experiencia visual completa diseñada para transparentar el proceso de la IA. A través de la barra de navegación, se accede a los siguientes módulos:
 
-1.  **Subir (Alimentar el Cerebro)**: Punto de entrada para ingesta de archivos o texto directo.
-2.  **Vista Indexación**: Auditoría visual de cómo Spring AI fragmentó un documento específico en chunks.
-3.  **Visor de Embeddings**: Mapa interactivo 3D que muestra la ubicación semántica de los fragmentos en el espacio vectorial.
-4.  **Pipeline RAG**: Diagrama animado que explica el flujo de datos multimodal en tiempo real.
-5.  **Preguntar (Chat)**: Interfaz principal donde ocurre la recuperación semántica y la generación visual con ImageModel.
+### 1. 📤 Subir (Alimentar el Cerebro)
+Es el punto de entrada principal para el conocimiento.
+- **Ingesta Multicanal**: Soporta carga de archivos binarios (**PDF, DOCX, TXT**) mediante un área de *Drag & Drop* interactiva o mediante la inserción de texto plano directo.
+- **Gestión de Estado**: Lista los documentos procesados mostrando su estado de indexación en tiempo real (PENDING, READY, FAILED) y metadatos básicos como el conteo de fragmentos generados.
+
+### 2. 📑 Vista Indexación (Auditoría de Chunks)
+Diseñada para que el usuario entienda cómo la IA "lee" sus documentos.
+- **Fragmentación Aislada**: Al seleccionar un documento, el sistema muestra el resultado del `TokenTextSplitter`.
+- **Detalle Técnico**: Cada fragmento (Chunk) se presenta con su ID único, un cálculo aproximado de tokens y un vistazo a su ubicación en el espacio latente. Es ideal para validar que el *chunking* sea coherente y no se pierda contexto.
+
+### 3. 🌍 Visor de Embeddings (Mapa Semántico 3D)
+Representación visual del conocimiento almacenado en **PGVector**.
+- **Espacio Latente 3D**: Utiliza **Plotly.js** para renderizar un universo de puntos donde cada uno representa un fragmento de texto. Los fragmentos con significados similares aparecen agrupados físicamente.
+- **Inspector Semántico**: Permite filtrar la visualización por documento y resaltar fragmentos específicos, facilitando la comprensión de cómo se relaciona la información de diferentes archivos.
+
+### 4. 🚀 Pipeline RAG (Flujo Animado)
+Un diagrama interactivo generado con SVG que educa al usuario sobre el proceso interno.
+- **Visualización del Proceso**: Muestra el camino que sigue un dato desde que es un archivo hasta que se convierte en una respuesta de OpenAI asistida por **Apache Tika** y **Dall-E 3**.
+- **Orquestación**: Subraya el papel de Spring AI como el motor de orquestación central de todo el flujo multimodal.
+
+### 5. 💬 Preguntar (Interfaz Multimodal)
+Donde el usuario interactúa con la inteligencia generada.
+- **Chat Contextual**: El usuario realiza preguntas y el sistema responde basándose *exclusivamente* en los documentos indexados (Grounded Generation).
+- **Salida Gráfica**: Gracias al `ImageModel`, cada respuesta textual se acompaña de una **infografía técnica** o representación visual generada dinámicamente, haciendo el conocimiento más digerible.
+- **Transparencia**: Indica las fuentes o documentos específicos que fueron utilizados para generar cada respuesta.
 
 ---
 
