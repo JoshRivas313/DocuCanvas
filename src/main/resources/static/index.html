@@ -209,6 +209,12 @@
                                 <button @click="searchQuery='Datos'; performSearch()" class="px-2 py-1 bg-sky-900/50 hover:bg-sky-500/50 text-sky-200 rounded border border-sky-500/30 transition">Datos</button>
                                 <button x-show="highlightedChunkIds.length > 0" @click="resetSearch()" class="px-2 py-1 text-rose-400 hover:text-rose-300 transition">Quitar Filtro</button>
                             </div>
+                            <select x-model="selectedDocument" @change="filterByDocument()" class="w-full bg-slate-800 border border-white/10 rounded-lg p-3 outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold text-indigo-300 transition">
+                                <option value="">🌍 Todos los Documentos</option>
+                                <template x-for="doc in uniqueDocuments" :key="doc">
+                                    <option :value="doc" x-text="doc"></option>
+                                </template>
+                            </select>
                         </div>
                     </div>
 
@@ -246,8 +252,14 @@
                 loadingChunks: false,
                 chunksLoaded: false,
                 searchQuery: '',
+                selectedDocument: '',
                 highlightedChunkIds: [],
                 isSearching: false,
+
+                get uniqueDocuments() {
+                    if (!this.chunksData) return [];
+                    return [...new Set(this.chunksData.map(c => c.documentName).filter(n => n && n !== 'Desconocido'))];
+                },
 
                 init() {
                     this.loadDocuments();
@@ -346,6 +358,7 @@
 
                 async performSearch() {
                     if (!this.searchQuery) return this.resetSearch();
+                    this.selectedDocument = ''; // Clear doc filter
                     this.isSearching = true;
                     try {
                         const res = await fetch(`/api/v1/chunks/search?query=${encodeURIComponent(this.searchQuery)}`);
@@ -360,8 +373,21 @@
                     }
                 },
 
+                filterByDocument() {
+                    if (!this.selectedDocument) {
+                        this.resetSearch();
+                        return;
+                    }
+                    this.searchQuery = ''; // Clear text search
+                    this.highlightedChunkIds = this.chunksData
+                        .filter(c => c.documentName === this.selectedDocument)
+                        .map(c => c.id);
+                    this.update3DMapHighlight();
+                },
+
                 resetSearch() {
                     this.searchQuery = '';
+                    this.selectedDocument = '';
                     this.highlightedChunkIds = [];
                     this.update3DMapHighlight();
                 },

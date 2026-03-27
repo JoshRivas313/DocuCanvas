@@ -18,7 +18,7 @@ spring:
     vectorstore:
       pgvector:
         table-name: document_chunks
-        dimensions: 768
+        dimensions: 1536
 
   datasource:
     url: jdbc:postgresql://localhost:5433/docucanvas

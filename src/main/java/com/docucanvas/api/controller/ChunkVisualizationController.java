@@ -27,13 +27,17 @@ public class ChunkVisualizationController {
 
     @GetMapping("/visualize")
     public List<ChunkDTO> getChunks() {
-        return jdbcClient.sql("SELECT id, content, embedding::text AS emb_text FROM document_chunks LIMIT 50")
+        return jdbcClient.sql("SELECT id, content, embedding::text AS emb_text, metadata->>'file_name' AS doc_name FROM document_chunks LIMIT 50")
                 .query((rs, rowNum) -> {
                     String id = rs.getString("id");
                     String content = rs.getString("content");
                     if (content != null && content.length() > 100) {
                         content = content.substring(0, 100) + "...";
                     }
+                    
+                    String docName = rs.getString("doc_name");
+                    if (docName == null) docName = "Desconocido";
+
                     String embText = rs.getString("emb_text");
                     List<Double> coords = List.of(0.0, 0.0, 0.0);
                     if (embText != null && embText.length() > 2) {
@@ -49,7 +53,7 @@ public class ChunkVisualizationController {
                             // ignore parsing errors, use defaults
                         }
                     }
-                    return new ChunkDTO(id, content, coords);
+                    return new ChunkDTO(id, content, coords, docName);
                 })
                 .list();
     }
