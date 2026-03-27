@@ -28,8 +28,8 @@ public class IngestionService {
         this.documentRepository = documentRepository;
         this.tikaExtractor = tikaExtractor;
         this.vectorStore = vectorStore;
-        // Chunking inteligente por tokens (aprox 800 tokens con 100 de solapamiento)
-        this.tokenTextSplitter = new TokenTextSplitter(800, 100, 5, 10000, true);
+        // Chunking optimizado para demostración visual y ahorro de costos en el LLM
+        this.tokenTextSplitter = new TokenTextSplitter(200, 50, 5, 10000, true);
     }
 
     @Async
