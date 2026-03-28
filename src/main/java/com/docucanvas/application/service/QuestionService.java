@@ -13,6 +13,9 @@ import org.springframework.stereotype.Service;
 
 import com.docucanvas.api.dto.response.CitationDTO;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +40,7 @@ public class QuestionService {
     private final ImageGenerationService imageGenerationService;
     private final ImageModel imageModel;
     private final org.springframework.jdbc.core.simple.JdbcClient jdbcClient;
+    private final ExecutorService aiExecutor = Executors.newFixedThreadPool(2);
 
     public QuestionService(ChatClient.Builder chatClientBuilder,
                            VectorStore vectorStore,
@@ -76,35 +80,51 @@ public class QuestionService {
                 ))
                 .toList();
 
-        // 2. Generación Fundamentada (LLM)
+        // 2. Lanzamos LLM + ImageModel EN PARALELO
         String context = docs.stream()
                 .map(org.springframework.ai.document.Document::getContent)
                 .collect(Collectors.joining("\n\n"));
 
-        ChatClient chatClient = chatClientBuilder
-                .defaultSystem(SYSTEM_PROMPT)
-                .build();
+        // Tarea A: Generación de Texto (LLM)
+        CompletableFuture<String> answerFuture = CompletableFuture.supplyAsync(() -> {
+            ChatClient chatClient = chatClientBuilder
+                    .defaultSystem(SYSTEM_PROMPT)
+                    .build();
 
-        String answer = chatClient.prompt()
-                .user(u -> u.text("Contexto:\n{context}\n\nPregunta: {question}")
-                        .param("context", context.isEmpty() ? "No se encontró contexto relevante." : context)
-                        .param("question", request.question()))
-                .call()
-                .content();
-        
-        long generationEnd = System.currentTimeMillis();
+            return chatClient.prompt()
+                    .user(u -> u.text("Contexto:\n{context}\n\nPregunta: {question}")
+                            .param("context", context.isEmpty() ? "No se encontró contexto relevante." : context)
+                            .param("question", request.question()))
+                    .call()
+                    .content();
+        }, aiExecutor);
 
-        // 3. Generación Visual (ImageModel)
-        String imageUrl = "";
-        long visualStart = System.currentTimeMillis();
+        // Tarea B: Generación Visual (ImageModel) — usa contexto directo, no espera al LLM
+        CompletableFuture<String> imageFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                org.springframework.ai.image.ImagePrompt visualPrompt =
+                        imageGenerationService.generateImagePromptFromContext(request.question(), context);
+                ImageResponse imgRes = imageModel.call(visualPrompt);
+                return imgRes.getResult().getOutput().getUrl();
+            } catch (Exception e) {
+                log.error("Error en ImageModel (paralelo): ", e);
+                return "";
+            }
+        }, aiExecutor);
+
+        // Esperamos ambas tareas concurrentes
+        String answer;
+        String imageUrl;
         try {
-            org.springframework.ai.image.ImagePrompt visualPrompt = imageGenerationService.generateImagePrompt(answer);
-            ImageResponse imgRes = imageModel.call(visualPrompt);
-            imageUrl = imgRes.getResult().getOutput().getUrl();
+            answer = answerFuture.get();
+            imageUrl = imageFuture.get();
         } catch (Exception e) {
-            log.error("Error en ImageModel: ", e);
+            log.error("Error esperando tareas paralelas: ", e);
+            answer = "Error al procesar la pregunta.";
+            imageUrl = "";
         }
-        long visualEnd = System.currentTimeMillis();
+
+        long generationEnd = System.currentTimeMillis();
 
         return new QuestionResponse(
                 request.question(),
@@ -114,8 +134,7 @@ public class QuestionService {
                 imageUrl,
                 (retrievalEnd - start),
                 (generationEnd - retrievalEnd),
-                (visualEnd - visualStart)
+                0 // La imagen se generó en paralelo, no suma al tiempo secuencial
         );
     }
 }
-

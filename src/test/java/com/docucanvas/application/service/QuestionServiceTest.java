@@ -72,8 +72,8 @@ class QuestionServiceTest {
     void setUp() {
         // Encadenamos el builder de ChatClient para que siempre devuelva nuestro mock
 
-        when(chatClientBuilder.defaultSystem(any(String.class))).thenReturn(chatClientBuilder);
-        when(chatClientBuilder.build()).thenReturn(chatClient);
+        lenient().when(chatClientBuilder.defaultSystem(any(String.class))).thenReturn(chatClientBuilder);
+        lenient().when(chatClientBuilder.build()).thenReturn(chatClient);
 
         questionService = new QuestionService(
                 chatClientBuilder, vectorStore, imageGenerationService, imageModel, jdbcClient);
@@ -91,7 +91,7 @@ class QuestionServiceTest {
         when(callResponseSpec.content()).thenReturn("Spring AI facilita la integración de RAG con PGVector.");
 
         // Arrange — simulamos respuesta de ImageModel
-        when(imageGenerationService.generateImagePrompt(any())).thenReturn(new ImagePrompt("test prompt"));
+        when(imageGenerationService.generateImagePromptFromContext(any(), any())).thenReturn(new ImagePrompt("test prompt"));
         when(imageModel.call(any(ImagePrompt.class))).thenReturn(imageResponse);
         when(imageResponse.getResult()).thenReturn(imageGeneration);
         when(imageGeneration.getOutput()).thenReturn(image);
@@ -121,7 +121,7 @@ class QuestionServiceTest {
         when(requestSpec.call()).thenReturn(callResponseSpec);
         when(callResponseSpec.content()).thenReturn("Respuesta filtrada por documento.");
 
-        when(imageGenerationService.generateImagePrompt(any())).thenReturn(new ImagePrompt("test"));
+        when(imageGenerationService.generateImagePromptFromContext(any(), any())).thenReturn(new ImagePrompt("test"));
         when(imageModel.call(any(ImagePrompt.class))).thenReturn(imageResponse);
         when(imageResponse.getResult()).thenReturn(imageGeneration);
         when(imageGeneration.getOutput()).thenReturn(image);
@@ -146,7 +146,7 @@ class QuestionServiceTest {
         when(requestSpec.call()).thenReturn(callResponseSpec);
         when(callResponseSpec.content()).thenReturn("Respuesta de emergencia.");
 
-        when(imageGenerationService.generateImagePrompt(any())).thenReturn(new ImagePrompt("test"));
+        when(imageGenerationService.generateImagePromptFromContext(any(), any())).thenReturn(new ImagePrompt("test"));
         when(imageModel.call(any(ImagePrompt.class)))
                 .thenThrow(new RuntimeException("Cuota de DALL-E agotada"));
 

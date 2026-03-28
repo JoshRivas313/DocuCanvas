@@ -27,12 +27,30 @@ public class ImageGenerationService {
      * @return prompt listo para ser ejecutado por {@link org.springframework.ai.image.ImageModel}
      */
     public ImagePrompt generateImagePrompt(String llmAnswer) {
-        log.info("Construyendo ImagePrompt visual a partir de la respuesta RAG");
+        return buildPrompt(llmAnswer);
+    }
 
-        // 1. Extraemos el fragmento más representativo de la respuesta
-        String contexto = llmAnswer.length() > MAX_CONTEXT_LENGTH
-                ? llmAnswer.substring(0, MAX_CONTEXT_LENGTH)
-                : llmAnswer;
+    /**
+     * Genera un {@link ImagePrompt} basado en la pregunta original y el contexto
+     * documental recuperado, permitiendo ejecución en paralelo con el LLM.
+     *
+     * @param question  pregunta original del usuario
+     * @param context   contexto documental recuperado del VectorStore
+     * @return prompt listo para ser ejecutado por {@link org.springframework.ai.image.ImageModel}
+     */
+    public ImagePrompt generateImagePromptFromContext(String question, String context) {
+        log.info("Construyendo ImagePrompt visual a partir de contexto directo (paralelo)");
+        String combined = "Pregunta: " + question + ". Contexto: " + context;
+        return buildPrompt(combined);
+    }
+
+    private ImagePrompt buildPrompt(String sourceText) {
+        log.info("Construyendo ImagePrompt visual");
+
+        // 1. Extraemos el fragmento más representativo
+        String contexto = sourceText.length() > MAX_CONTEXT_LENGTH
+                ? sourceText.substring(0, MAX_CONTEXT_LENGTH)
+                : sourceText;
 
         // 2. Prompt engineering dinámico: contexto + estilo profesional para la demo
         String visualPrompt = String.format(
@@ -44,11 +62,10 @@ public class ImageGenerationService {
 
         log.debug("Visual prompt generado ({} caracteres): {}", visualPrompt.length(), visualPrompt);
 
-        // 3. Opciones explícitas: calidad HD para la demo en vivo
-        // Nota: n=1 ya está configurado en application.yaml (spring.ai.openai.image.options.n)
+        // 3. Opciones: quality standard para velocidad óptima en demos en vivo
         ImageOptions options = OpenAiImageOptions.builder()
                 .model("dall-e-3")
-                .quality("hd")
+                .quality("standard")
                 .height(1024)
                 .width(1024)
                 .build();
