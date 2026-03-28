@@ -20,6 +20,8 @@
     <!-- Alpine.js Application Logic -->
     <script>
         function docApp() {
+            try {
+                console.log("🚀 [DocuCanvas] INICIALIZANDO docApp()");
             return {
                 view: 'upload',
                 indexingSubView: 'chunks', // 'chunks' or 'preview'
@@ -76,6 +78,7 @@
 
                 // Initialization
                 init() {
+                    console.log("👉 [DocuCanvas] INIT EJECUTADO");
                     this.loadDocuments();
                     setInterval(() => {
                         if (this.view === 'upload' || this.view === 'indexing') {
@@ -321,6 +324,10 @@
                     const file = event.dataTransfer.files[0];
                     if (file) this.uploadFile(file);
                 }
+            };
+            } catch (error) {
+                console.error("🔥 [DocuCanvas] ERROR FATAL AL CREAR docApp():", error);
+                return { view: 'upload' };
             }
         }
     </script>

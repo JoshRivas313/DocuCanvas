@@ -1,0 +1,274 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.docucanvas:docu-canvas >---------------------
+[INFO] Building DocuCanvas 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ docu-canvas ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 12 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ docu-canvas ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ docu-canvas ---
+[INFO] skip non existing resourceDirectory C:\intelijent\Proyecto_Base_SpringBoot\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ docu-canvas ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ docu-canvas ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.docucanvas.application.service.QuestionServiceTest
+22:22:26.534 [main] INFO com.docucanvas.application.service.QuestionService -- Iniciando Pipeline RAG para: ¿Qué dice el documento?
+22:22:26.645 [main] INFO com.docucanvas.application.service.QuestionService -- Iniciando Pipeline RAG para: ¿Qué es RAG?
+22:22:26.661 [main] INFO com.docucanvas.application.service.QuestionService -- Iniciando Pipeline RAG para: ¿Qué es Spring AI?
+[ERROR] Tests run: 3, Failures: 0, Errors: 3, Skipped: 0, Time elapsed: 1.946 s <<< FAILURE! -- in com.docucanvas.application.service.QuestionServiceTest
+[ERROR] com.docucanvas.application.service.QuestionServiceTest.debeIncluirDocumentIdEnFuentesCuandoSeFiltraPorDocumento -- Time elapsed: 1.879 s <<< ERROR!
+org.mockito.exceptions.misusing.PotentialStubbingProblem: 
+
+Strict stubbing argument mismatch. Please check:
+ - this invocation of 'user' method:
+    requestSpec.user(
+    com.docucanvas.application.service.QuestionService$$Lambda/0x00000257e12b6820@3f049056
+);
+    -> at com.docucanvas.application.service.QuestionService.answer(QuestionService.java:89)
+ - has following stubbing(s) with different arguments:
+    1. requestSpec.user(null);
+      -> at com.docucanvas.application.service.QuestionServiceTest.debeIncluirDocumentIdEnFuentesCuandoSeFiltraPorDocumento(QuestionServiceTest.java:115)
+Typically, stubbing argument mismatch indicates user mistake when writing tests.
+Mockito fails early so that you can debug potential problem easily.
+However, there are legit scenarios when this exception generates false negative signal:
+  - stubbing the same method multiple times using 'given().will()' or 'when().then()' API
+    Please use 'will().given()' or 'doReturn().when()' API for stubbing.
+  - stubbed method is intentionally invoked with different arguments by code under test
+    Please use default or 'silent' JUnit Rule (equivalent of Strictness.LENIENT).
+For more information see javadoc for PotentialStubbingProblem class.
+	at com.docucanvas.application.service.QuestionService.answer(QuestionService.java:89)
+	at com.docucanvas.application.service.QuestionServiceTest.debeIncluirDocumentIdEnFuentesCuandoSeFiltraPorDocumento(QuestionServiceTest.java:126)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1597)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1597)
+
+[ERROR] com.docucanvas.application.service.QuestionServiceTest.debeResponderTextoAunqueFalleImageModel -- Time elapsed: 0.014 s <<< ERROR!
+org.mockito.exceptions.misusing.PotentialStubbingProblem: 
+
+Strict stubbing argument mismatch. Please check:
+ - this invocation of 'user' method:
+    requestSpec.user(
+    com.docucanvas.application.service.QuestionService$$Lambda/0x00000257e12b6820@44c13103
+);
+    -> at com.docucanvas.application.service.QuestionService.answer(QuestionService.java:89)
+ - has following stubbing(s) with different arguments:
+    1. requestSpec.user(null);
+      -> at com.docucanvas.application.service.QuestionServiceTest.debeResponderTextoAunqueFalleImageModel(QuestionServiceTest.java:138)
+Typically, stubbing argument mismatch indicates user mistake when writing tests.
+Mockito fails early so that you can debug potential problem easily.
+However, there are legit scenarios when this exception generates false negative signal:
+  - stubbing the same method multiple times using 'given().will()' or 'when().then()' API
+    Please use 'will().given()' or 'doReturn().when()' API for stubbing.
+  - stubbed method is intentionally invoked with different arguments by code under test
+    Please use default or 'silent' JUnit Rule (equivalent of Strictness.LENIENT).
+For more information see javadoc for PotentialStubbingProblem class.
+	at com.docucanvas.application.service.QuestionService.answer(QuestionService.java:89)
+	at com.docucanvas.application.service.QuestionServiceTest.debeResponderTextoAunqueFalleImageModel(QuestionServiceTest.java:147)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1597)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1597)
+
+[ERROR] com.docucanvas.application.service.QuestionServiceTest.debeRetornarRespuestaCompletaConImagenCuandoPipelineEsExitoso -- Time elapsed: 0.012 s <<< ERROR!
+org.mockito.exceptions.misusing.PotentialStubbingProblem: 
+
+Strict stubbing argument mismatch. Please check:
+ - this invocation of 'user' method:
+    requestSpec.user(
+    com.docucanvas.application.service.QuestionService$$Lambda/0x00000257e12b6820@7e2c64
+);
+    -> at com.docucanvas.application.service.QuestionService.answer(QuestionService.java:89)
+ - has following stubbing(s) with different arguments:
+    1. requestSpec.user(null);
+      -> at com.docucanvas.application.service.QuestionServiceTest.debeRetornarRespuestaCompletaConImagenCuandoPipelineEsExitoso(QuestionServiceTest.java:86)
+Typically, stubbing argument mismatch indicates user mistake when writing tests.
+Mockito fails early so that you can debug potential problem easily.
+However, there are legit scenarios when this exception generates false negative signal:
+  - stubbing the same method multiple times using 'given().will()' or 'when().then()' API
+    Please use 'will().given()' or 'doReturn().when()' API for stubbing.
+  - stubbed method is intentionally invoked with different arguments by code under test
+    Please use default or 'silent' JUnit Rule (equivalent of Strictness.LENIENT).
+For more information see javadoc for PotentialStubbingProblem class.
+	at com.docucanvas.application.service.QuestionService.answer(QuestionService.java:89)
+	at com.docucanvas.application.service.QuestionServiceTest.debeRetornarRespuestaCompletaConImagenCuandoPipelineEsExitoso(QuestionServiceTest.java:98)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1597)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1597)
+
+[INFO] Running com.docucanvas.DocuCanvasApplicationTests
+22:22:26.926 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.docucanvas.DocuCanvasApplicationTests]: DocuCanvasApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+22:22:27.196 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.docucanvas.DocuCanvasApplication for test class com.docucanvas.DocuCanvasApplicationTests
+22:22:27.396 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+22:22:27.399 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+22:22:27.411 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 1.20.6
+22:22:27.822 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Loaded org.testcontainers.dockerclient.NpipeSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+22:22:28.310 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with local Npipe socket (npipe:////./pipe/docker_engine)
+22:22:28.312 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+22:22:28.337 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 28.4.0
+  API Version: 1.51
+  Operating System: Docker Desktop
+  Total Memory: 13902 MB
+  Labels: 
+    com.docker.desktop.address=npipe://\\.\pipe\docker_cli
+22:22:28.442 [main] INFO tc.testcontainers/ryuk:0.11.0 -- Creating container for image: testcontainers/ryuk:0.11.0
+22:22:28.560 [main] INFO org.testcontainers.utility.RegistryAuthLocator -- Credential helper/store (docker-credential-desktop) does not have credentials for https://index.docker.io/v1/
+22:22:28.793 [main] INFO tc.testcontainers/ryuk:0.11.0 -- Container testcontainers/ryuk:0.11.0 is starting: d9a4201a9d4d9ee921ea907013dad68e5edbd215b30d5cd5e277f030f69bc447
+22:22:29.309 [main] INFO tc.testcontainers/ryuk:0.11.0 -- Container testcontainers/ryuk:0.11.0 started in PT0.8671023S
+22:22:29.319 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+22:22:29.319 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+22:22:29.319 [main] INFO org.testcontainers.DockerClientFactory -- ?? Docker server version should be at least 1.6.0
+22:22:29.320 [main] INFO tc.pgvector/pgvector:pg16 -- Creating container for image: pgvector/pgvector:pg16
+22:22:29.418 [main] INFO tc.pgvector/pgvector:pg16 -- Container pgvector/pgvector:pg16 is starting: fef4402369e8a6dd466974ab56f5e830272cd68346b11ce57442a54e3b12eaee
+22:22:31.409 [main] INFO tc.pgvector/pgvector:pg16 -- Container pgvector/pgvector:pg16 started in PT2.0890887S
+22:22:31.410 [main] INFO tc.pgvector/pgvector:pg16 -- Container is started (JDBC URL: jdbc:postgresql://localhost:63807/docucanvas_test?loggerLevel=OFF)
+22:22:31.451 [main] INFO org.springframework.boot.devtools.restart.RestartApplicationListener -- Restart disabled due to context in which it is running
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.4)
+
+2026-03-27T22:22:31.891-05:00  INFO 10776 --- [docu-canvas] [           main] c.docucanvas.DocuCanvasApplicationTests  : Starting DocuCanvasApplicationTests using Java 22.0.1 with PID 10776 (started by hurta in C:\intelijent\Proyecto_Base_SpringBoot)
+2026-03-27T22:22:31.892-05:00 DEBUG 10776 --- [docu-canvas] [           main] c.docucanvas.DocuCanvasApplicationTests  : Running with Spring Boot v3.4.4, Spring v6.2.5
+2026-03-27T22:22:31.893-05:00  INFO 10776 --- [docu-canvas] [           main] c.docucanvas.DocuCanvasApplicationTests  : No active profile set, falling back to 1 default profile: "default"
+2026-03-27T22:22:33.243-05:00  INFO 10776 --- [docu-canvas] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-03-27T22:22:33.409-05:00  INFO 10776 --- [docu-canvas] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 155 ms. Found 2 JPA repository interfaces.
+2026-03-27T22:22:34.139-05:00  INFO 10776 --- [docu-canvas] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-03-27T22:22:34.305-05:00  INFO 10776 --- [docu-canvas] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@6d18401b
+2026-03-27T22:22:34.306-05:00  INFO 10776 --- [docu-canvas] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-03-27T22:22:34.337-05:00  INFO 10776 --- [docu-canvas] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:63807/docucanvas_test?loggerLevel=OFF (PostgreSQL 16.13)
+2026-03-27T22:22:34.386-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table "public"."flyway_schema_history" does not exist yet
+2026-03-27T22:22:34.390-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 5 migrations (execution time 00:00.022s)
+2026-03-27T22:22:34.412-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "public"."flyway_schema_history" ...
+2026-03-27T22:22:34.463-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": << Empty Schema >>
+2026-03-27T22:22:34.476-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "1 - Initial Schema"
+2026-03-27T22:22:34.531-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "2 - Fix Vector Dimension"
+2026-03-27T22:22:34.548-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "3 - Update Vector To 1536"
+2026-03-27T22:22:34.568-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "4 - Update Chunk Index Nullable"
+2026-03-27T22:22:34.584-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "5 - Add File Content"
+2026-03-27T22:22:34.599-05:00  INFO 10776 --- [docu-canvas] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 5 migrations to schema "public", now at version v5 (execution time 00:00.055s)
+2026-03-27T22:22:34.719-05:00  INFO 10776 --- [docu-canvas] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-03-27T22:22:34.804-05:00  INFO 10776 --- [docu-canvas] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.11.Final
+2026-03-27T22:22:34.849-05:00  INFO 10776 --- [docu-canvas] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-03-27T22:22:34.994-05:00  INFO 10776 --- [docu-canvas] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-03-27T22:22:35.050-05:00  WARN 10776 --- [docu-canvas] [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-03-27T22:22:35.068-05:00  INFO 10776 --- [docu-canvas] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 16.13
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-03-27T22:22:35.720-05:00  INFO 10776 --- [docu-canvas] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-03-27T22:22:35.757-05:00  INFO 10776 --- [docu-canvas] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-03-27T22:22:36.374-05:00  INFO 10776 --- [docu-canvas] [           main] o.s.a.v.pgvector.PgVectorStore           : Using the vector table name: document_chunks. Is empty: false
+2026-03-27T22:22:36.377-05:00  INFO 10776 --- [docu-canvas] [           main] o.s.a.v.pgvector.PgVectorStore           : Initializing PGVectorStore schema for table: document_chunks in schema: public
+2026-03-27T22:22:36.377-05:00  INFO 10776 --- [docu-canvas] [           main] o.s.a.v.pgvector.PgVectorStore           : vectorTableValidationsEnabled false
+2026-03-27T22:22:36.377-05:00 DEBUG 10776 --- [docu-canvas] [           main] o.s.a.v.pgvector.PgVectorStore           : Skipping the schema initialization for the table: public.document_chunks
+2026-03-27T22:22:37.380-05:00  WARN 10776 --- [docu-canvas] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-03-27T22:22:37.421-05:00  WARN 10776 --- [docu-canvas] [           main] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 6a4e9e1e-54f3-46ba-aaf9-f7fa79c4f3eb
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-03-27T22:22:37.450-05:00  INFO 10776 --- [docu-canvas] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-03-27T22:22:37.898-05:00  INFO 10776 --- [docu-canvas] [           main] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page template: index
+2026-03-27T22:22:38.591-05:00  INFO 10776 --- [docu-canvas] [           main] c.docucanvas.DocuCanvasApplicationTests  : Started DocuCanvasApplicationTests in 7.147 seconds (process running for 14.523)
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 12.35 s -- in com.docucanvas.DocuCanvasApplicationTests
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Errors: 
+[ERROR]   QuestionServiceTest.debeIncluirDocumentIdEnFuentesCuandoSeFiltraPorDocumento:126 » PotentialStubbingProblem 
+Strict stubbing argument mismatch. Please check:
+ - this invocation of 'user' method:
+    requestSpec.user(
+    com.docucanvas.application.service.QuestionService$$Lambda/0x00000257e12b6820@3f049056
+);
+    -> at com.docucanvas.application.service.QuestionService.answer(QuestionService.java:89)
+ - has following stubbing(s) with different arguments:
+    1. requestSpec.user(null);
+      -> at com.docucanvas.application.service.QuestionServiceTest.debeIncluirDocumentIdEnFuentesCuandoSeFiltraPorDocumento(QuestionServiceTest.java:115)
+Typically, stubbing argument mismatch indicates user mistake when writing tests.
+Mockito fails early so that you can debug potential problem easily.
+However, there are legit scenarios when this exception generates false negative signal:
+  - stubbing the same method multiple times using 'given().will()' or 'when().then()' API
+    Please use 'will().given()' or 'doReturn().when()' API for stubbing.
+  - stubbed method is intentionally invoked with different arguments by code under test
+    Please use default or 'silent' JUnit Rule (equivalent of Strictness.LENIENT).
+For more information see javadoc for PotentialStubbingProblem class.
+[ERROR]   QuestionServiceTest.debeResponderTextoAunqueFalleImageModel:147 » PotentialStubbingProblem 
+Strict stubbing argument mismatch. Please check:
+ - this invocation of 'user' method:
+    requestSpec.user(
+    com.docucanvas.application.service.QuestionService$$Lambda/0x00000257e12b6820@44c13103
+);
+    -> at com.docucanvas.application.service.QuestionService.answer(QuestionService.java:89)
+ - has following stubbing(s) with different arguments:
+    1. requestSpec.user(null);
+      -> at com.docucanvas.application.service.QuestionServiceTest.debeResponderTextoAunqueFalleImageModel(QuestionServiceTest.java:138)
+Typically, stubbing argument mismatch indicates user mistake when writing tests.
+Mockito fails early so that you can debug potential problem easily.
+However, there are legit scenarios when this exception generates false negative signal:
+  - stubbing the same method multiple times using 'given().will()' or 'when().then()' API
+    Please use 'will().given()' or 'doReturn().when()' API for stubbing.
+  - stubbed method is intentionally invoked with different arguments by code under test
+    Please use default or 'silent' JUnit Rule (equivalent of Strictness.LENIENT).
+For more information see javadoc for PotentialStubbingProblem class.
+[ERROR]   QuestionServiceTest.debeRetornarRespuestaCompletaConImagenCuandoPipelineEsExitoso:98 » PotentialStubbingProblem 
+Strict stubbing argument mismatch. Please check:
+ - this invocation of 'user' method:
+    requestSpec.user(
+    com.docucanvas.application.service.QuestionService$$Lambda/0x00000257e12b6820@7e2c64
+);
+    -> at com.docucanvas.application.service.QuestionService.answer(QuestionService.java:89)
+ - has following stubbing(s) with different arguments:
+    1. requestSpec.user(null);
+      -> at com.docucanvas.application.service.QuestionServiceTest.debeRetornarRespuestaCompletaConImagenCuandoPipelineEsExitoso(QuestionServiceTest.java:86)
+Typically, stubbing argument mismatch indicates user mistake when writing tests.
+Mockito fails early so that you can debug potential problem easily.
+However, there are legit scenarios when this exception generates false negative signal:
+  - stubbing the same method multiple times using 'given().will()' or 'when().then()' API
+    Please use 'will().given()' or 'doReturn().when()' API for stubbing.
+  - stubbed method is intentionally invoked with different arguments by code under test
+    Please use default or 'silent' JUnit Rule (equivalent of Strictness.LENIENT).
+For more information see javadoc for PotentialStubbingProblem class.
+[INFO] 
+[ERROR] Tests run: 4, Failures: 0, Errors: 3, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  18.333 s
+[INFO] Finished at: 2026-03-27T22:22:39-05:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.2:test (default-test) on project docu-canvas: 
+[ERROR] 
+[ERROR] See C:\intelijent\Proyecto_Base_SpringBoot\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

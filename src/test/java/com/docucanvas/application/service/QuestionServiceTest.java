@@ -12,9 +12,10 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
-import org.springframework.ai.image.ImageResult;
+import org.springframework.ai.image.ImageGeneration;
 import org.springframework.ai.image.Image;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.SearchRequest;
 
 import java.util.UUID;
 
@@ -42,6 +43,9 @@ class QuestionServiceTest {
     private ImageModel imageModel;
 
     @Mock
+    private org.springframework.jdbc.core.simple.JdbcClient jdbcClient;
+
+    @Mock
     private ChatClient.Builder chatClientBuilder;
 
     @Mock
@@ -57,7 +61,7 @@ class QuestionServiceTest {
     private ImageResponse imageResponse;
 
     @Mock
-    private ImageResult imageResult;
+    private ImageGeneration imageGeneration;
 
     @Mock
     private Image image;
@@ -67,28 +71,30 @@ class QuestionServiceTest {
     @BeforeEach
     void setUp() {
         // Encadenamos el builder de ChatClient para que siempre devuelva nuestro mock
-        when(chatClientBuilder.defaultAdvisors(any())).thenReturn(chatClientBuilder);
+
         when(chatClientBuilder.defaultSystem(any(String.class))).thenReturn(chatClientBuilder);
         when(chatClientBuilder.build()).thenReturn(chatClient);
 
         questionService = new QuestionService(
-                chatClientBuilder, vectorStore, imageGenerationService, imageModel);
+                chatClientBuilder, vectorStore, imageGenerationService, imageModel, jdbcClient);
     }
 
     @Test
     @DisplayName("Debe retornar respuesta con texto e imagen cuando el pipeline RAG funciona correctamente")
     void debeRetornarRespuestaCompletaConImagenCuandoPipelineEsExitoso() {
-        // Arrange — simulamos respuesta del LLM
+        // Arrange — simulamos respuesta del LLM y VectorStore
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(java.util.List.of(
+                new org.springframework.ai.document.Document("contexto dummy", java.util.Map.of("source", "doc-1"))));
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.user(any(java.util.function.Consumer.class))).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(callResponseSpec);
         when(callResponseSpec.content()).thenReturn("Spring AI facilita la integración de RAG con PGVector.");
 
         // Arrange — simulamos respuesta de ImageModel
         when(imageGenerationService.generateImagePrompt(any())).thenReturn(new ImagePrompt("test prompt"));
         when(imageModel.call(any(ImagePrompt.class))).thenReturn(imageResponse);
-        when(imageResponse.getResult()).thenReturn(imageResult);
-        when(imageResult.getOutput()).thenReturn(image);
+        when(imageResponse.getResult()).thenReturn(imageGeneration);
+        when(imageGeneration.getOutput()).thenReturn(image);
         when(image.getUrl()).thenReturn("https://dalle.example.com/img/rag.png");
 
         // Act
@@ -99,7 +105,7 @@ class QuestionServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.answer()).contains("Spring AI");
         assertThat(response.imageUrl()).isEqualTo("https://dalle.example.com/img/rag.png");
-        assertThat(response.sources()).isNotEmpty();
+        assertThat(response.citations()).isNotEmpty();
         verify(imageModel, times(1)).call(any(ImagePrompt.class));
     }
 
@@ -108,15 +114,17 @@ class QuestionServiceTest {
     void debeIncluirDocumentIdEnFuentesCuandoSeFiltraPorDocumento() {
         // Arrange
         UUID documentId = UUID.randomUUID();
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(java.util.List.of(
+                new org.springframework.ai.document.Document("contexto test", java.util.Map.of("source", documentId.toString()))));
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.user(any(java.util.function.Consumer.class))).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(callResponseSpec);
         when(callResponseSpec.content()).thenReturn("Respuesta filtrada por documento.");
 
         when(imageGenerationService.generateImagePrompt(any())).thenReturn(new ImagePrompt("test"));
         when(imageModel.call(any(ImagePrompt.class))).thenReturn(imageResponse);
-        when(imageResponse.getResult()).thenReturn(imageResult);
-        when(imageResult.getOutput()).thenReturn(image);
+        when(imageResponse.getResult()).thenReturn(imageGeneration);
+        when(imageGeneration.getOutput()).thenReturn(image);
         when(image.getUrl()).thenReturn("https://dalle.example.com/img/doc.png");
 
         // Act
@@ -124,15 +132,17 @@ class QuestionServiceTest {
                 new QuestionRequest("¿Qué dice el documento?", 3, documentId));
 
         // Assert
-        assertThat(response.sources()).anyMatch(s -> s.contains(documentId.toString()));
+        assertThat(response.citations()).anyMatch(c -> c.source().contains(documentId.toString()));
     }
 
     @Test
     @DisplayName("Debe devolver respuesta texto aunque ImageModel falle (resiliencia)")
     void debeResponderTextoAunqueFalleImageModel() {
         // Arrange
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(java.util.List.of(
+                new org.springframework.ai.document.Document("contexto fallo image", java.util.Map.of("source", "doc-error"))));
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.user(any(java.util.function.Consumer.class))).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(callResponseSpec);
         when(callResponseSpec.content()).thenReturn("Respuesta de emergencia.");
 
@@ -146,7 +156,7 @@ class QuestionServiceTest {
 
         // Assert
         assertThat(response.answer()).isNotBlank();
-        assertThat(response.imageUrl()).contains("Imagen no disponible");
+        assertThat(response.imageUrl()).isEmpty();
     }
 }
 
