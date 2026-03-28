@@ -49,6 +49,9 @@
                 documentChunks: [],
                 loadingDocChunks: false,
 
+                // Modal State
+                chunkModal: { open: false, chunk: null },
+
                 // Computed Properties
                 get uniqueDocuments() {
                     return [...new Set(this.chunksData.map(c => c.documentName).filter(n => n && n !== 'Desconocido'))];
@@ -306,12 +309,19 @@
                     const plotDiv = document.getElementById('plotly-3d-map');
                     if (plotDiv && chunk.coordinates) {
                         const [x, y, z] = chunk.coordinates;
-                        // Mover la cámara para focalizar el punto
                         Plotly.relayout(plotDiv, {
                             'scene.camera.center': { x: x, y: y, z: z },
                             'scene.camera.eye': { x: x + 1, y: y + 1, z: z + 1 }
                         });
                     }
+                },
+
+                openChunkModal(chunk) {
+                    this.chunkModal = { open: true, chunk: chunk };
+                },
+
+                closeChunkModal() {
+                    this.chunkModal = { open: false, chunk: null };
                 },
 
                 handleFileUpload(event) {

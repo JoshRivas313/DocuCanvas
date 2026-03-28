@@ -113,6 +113,7 @@ public class ChunkService {
             result.add(new ChunkDTO(
                     raw.id,
                     truncateContent(raw.content),
+                    raw.content,
                     Arrays.stream(projected[i]).boxed().toList(),
                     raw.docName != null ? raw.docName : "Desconocido",
                     meta.name(),
