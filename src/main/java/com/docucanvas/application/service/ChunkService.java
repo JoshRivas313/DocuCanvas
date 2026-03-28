@@ -3,6 +3,7 @@ package com.docucanvas.application.service;
 import com.docucanvas.api.dto.ChunkDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
@@ -35,8 +36,9 @@ public class ChunkService {
     /**
      * Recupera chunks y aplica PCA + Clustering dinámico para visualización.
      */
+    @Cacheable(value = "chunksGlobal")
     public List<ChunkDTO> getChunksForVisualization() {
-        log.info("Calculando proyección 3D con PCA y Clustering dinámico para vista global");
+        log.info("Calculando proyección 3D con PCA y Clustering dinámico para vista global (CACHE MISS)");
 
         List<RawChunkData> rawData = jdbcClient
                 .sql("SELECT id, content, embedding::text as emb_text, metadata->>'source' as doc_name FROM document_chunks LIMIT :limit")
@@ -57,8 +59,9 @@ public class ChunkService {
     /**
      * Recupera todos los chunks asociados a un documento con su proyección PCA.
      */
+    @Cacheable(value = "chunksDoc", key = "#documentId")
     public List<ChunkDTO> getChunksByDocumentId(String documentId) {
-        log.info("Generando vista de indexación avanzada para el documento: {}", documentId);
+        log.info("Generando vista de indexación para documento: {} (CACHE MISS)", documentId);
 
         List<RawChunkData> rawData = jdbcClient
                 .sql("SELECT id, content, embedding::text as emb_text, metadata->>'source' as doc_name FROM document_chunks " +

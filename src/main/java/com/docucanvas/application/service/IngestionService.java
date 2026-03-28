@@ -6,6 +6,7 @@ import com.docucanvas.infrastructure.storage.TikaExtractor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +34,7 @@ public class IngestionService {
     }
 
     @Async
+    @CacheEvict(value = {"chunksGlobal", "chunksDoc"}, allEntries = true)
     public void processIngestion(UUID documentId, byte[] fileContent, String originalFilename) {
         log.info("Starting ingestion for document: {}", documentId);
         
