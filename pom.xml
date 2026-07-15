@@ -16,7 +16,7 @@
 	<packaging>jar</packaging>
 
 	<name>DocuCanvas</name>
-	<description>Plataforma web de consulta inteligente sobre documentos usando RAG con Spring AI y Gemini</description>
+	<description>Plataforma web de consulta inteligente sobre documentos usando RAG con Spring AI y Ollama (local)</description>
 
 	<properties>
 		<java.version>21</java.version>
@@ -96,7 +96,7 @@
 
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+			<artifactId>spring-ai-ollama-spring-boot-starter</artifactId>
 			<version>${spring-ai.version}</version>
 		</dependency>
 		<dependency>

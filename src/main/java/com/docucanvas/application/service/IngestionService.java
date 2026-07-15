@@ -24,8 +24,8 @@ public class IngestionService {
     private final TokenTextSplitter tokenTextSplitter;
 
     public IngestionService(DocumentRepository documentRepository,
-                            TikaExtractor tikaExtractor,
-                            VectorStore vectorStore) {
+            TikaExtractor tikaExtractor,
+            VectorStore vectorStore) {
         this.documentRepository = documentRepository;
         this.tikaExtractor = tikaExtractor;
         this.vectorStore = vectorStore;
@@ -34,10 +34,10 @@ public class IngestionService {
     }
 
     @Async
-    @CacheEvict(value = {"chunksGlobal", "chunksDoc"}, allEntries = true)
+    @CacheEvict(value = { "chunksGlobal", "chunksDoc" }, allEntries = true)
     public void processIngestion(UUID documentId, byte[] fileContent, String originalFilename) {
         log.info("Starting ingestion for document: {}", documentId);
-        
+
         com.docucanvas.domain.model.Document domainDocument = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Document not found"));
 
@@ -52,28 +52,26 @@ public class IngestionService {
 
             // 2. Chunking Inteligente con Spring AI
             List<Document> springAiDocs = tokenTextSplitter.apply(List.of(new Document(text)));
-            
+
             // Enriquecer con Metadatos (Pilar del RAG)
             for (int i = 0; i < springAiDocs.size(); i++) {
                 Document doc = springAiDocs.get(i);
                 doc.getMetadata().putAll(Map.of(
                         "documentId", documentId.toString(),
                         "chunkIndex", i,
-                        "source", originalFilename
-                ));
+                        "source", originalFilename));
             }
             log.debug("Dividido en {} chunks inteligentes", springAiDocs.size());
 
             // 3. Ingesta Vectorial (Embedding + Save en un solo paso)
             // Spring AI se encarga de llamar al EmbeddingModel configurado en YAML
             vectorStore.add(springAiDocs);
-            log.info("Vectores persistidos en VectorStore para el documento: {}", documentId);
 
             // 5. Completar Proceso
             domainDocument.setStatus(DocumentStatus.READY);
             domainDocument.setChunkCount(springAiDocs.size());
             documentRepository.save(domainDocument);
-            
+
             log.info("Ingesta completada exitosamente para: {}", originalFilename);
 
         } catch (Exception e) {

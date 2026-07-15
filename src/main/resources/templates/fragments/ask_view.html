@@ -68,18 +68,41 @@
 
         <!-- Input Area -->
         <div class="p-6 border-t border-white/5 glass bg-slate-900/80 backdrop-blur-md">
-            <div class="flex gap-3 max-w-4xl mx-auto">
-                <input x-model="question" @keyup.enter="askQuestion()" type="text"
-                    placeholder="Escribe tu pregunta aquí..."
-                    class="flex-1 bg-slate-800/80 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 focus:ring-sky-500 transition-all shadow-inner">
-                <button @click="askQuestion()" :disabled="loading"
-                    class="bg-sky-600 p-4 rounded-xl hover:bg-sky-500 transition disabled:opacity-50 shadow-lg hover:shadow-sky-500/20 flex items-center gap-2 font-bold">
-                    <span x-show="!loading">Preguntar</span>
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex flex-col gap-3 max-w-4xl mx-auto">
+                <!-- Filtro por documento -->
+                <div class="flex items-center gap-2 text-xs text-slate-400">
+                    <svg class="w-4 h-4 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
                     </svg>
-                </button>
+                    <span class="font-semibold text-slate-300">Buscar en:</span>
+                    <select x-model="selectedAskDocumentId"
+                        class="bg-slate-800/80 border border-white/10 rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-sky-500 text-xs text-slate-200 flex-1 max-w-xs">
+                        <option value="">📚 Todos los documentos</option>
+                        <template x-for="doc in documents.filter(d => d.status === 'READY' && d.chunkCount > 0)" :key="doc.id">
+                            <option :value="doc.id" x-text="'📄 ' + doc.title"></option>
+                        </template>
+                    </select>
+                    <span x-show="selectedAskDocumentId !== ''"
+                        x-cloak
+                        class="text-[10px] bg-sky-900/40 text-sky-300 border border-sky-500/20 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
+                        ✔ Filtrado
+                    </span>
+                </div>
+                <!-- Campo de pregunta -->
+                <div class="flex gap-3">
+                    <input x-model="question" @keyup.enter="askQuestion()" type="text"
+                        placeholder="Escribe tu pregunta aquí..."
+                        class="flex-1 bg-slate-800/80 border border-white/10 rounded-xl p-4 outline-none focus:ring-2 focus:ring-sky-500 transition-all shadow-inner">
+                    <button @click="askQuestion()" :disabled="loading"
+                        class="bg-sky-600 p-4 rounded-xl hover:bg-sky-500 transition disabled:opacity-50 shadow-lg hover:shadow-sky-500/20 flex items-center gap-2 font-bold">
+                        <span x-show="!loading">Preguntar</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

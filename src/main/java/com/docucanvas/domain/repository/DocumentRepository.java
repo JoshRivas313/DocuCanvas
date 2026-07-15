@@ -8,7 +8,10 @@ import java.util.UUID;
 
 public interface DocumentRepository {
     Document save(Document document);
+
     Optional<Document> findById(UUID id);
+
     List<Document> findAll(int limit, int offset);
+
     void delete(UUID id);
 }

@@ -69,17 +69,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Captura errores de comunicación con la API de OpenAI / ImageModel.
-     * Evita que el usuario vea la API key u otros detalles sensibles.
+     * Captura errores de comunicación con Ollama u otro servicio REST de IA.
+     * Típicamente ocurre si Ollama no está corriendo en localhost:11434.
      */
     @ExceptionHandler(org.springframework.web.client.RestClientException.class)
-    public ProblemDetail handleOpenAiError(org.springframework.web.client.RestClientException ex) {
-        log.error("Error en llamada a servicio externo de IA: {}", ex.getMessage());
+    public ProblemDetail handleOllamaError(org.springframework.web.client.RestClientException ex) {
+        log.error("Error en llamada al servicio Ollama (¿está corriendo en localhost:11434?): {}", ex.getMessage());
 
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_GATEWAY);
         problem.setType(URI.create("https://docucanvas.io/errors/ai-service-unavailable"));
         problem.setTitle("Servicio de IA no disponible");
-        problem.setDetail("El modelo de IA no pudo procesar la solicitud. Intenta de nuevo en unos segundos.");
+        problem.setDetail("Ollama no pudo procesar la solicitud. Verifica que esté corriendo con 'docker-compose up ollama'.");
         problem.setProperty("timestamp", Instant.now());
         return problem;
     }

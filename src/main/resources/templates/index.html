@@ -42,6 +42,9 @@
                 hoveredChunk: null,
                 selectedChunkId: null,
 
+                // Ask View — filtro por documento
+                selectedAskDocumentId: '',
+
                 // Indexing View State
                 selectedDocId: null,
                 selectedDocTitle: '',
@@ -83,6 +86,7 @@
                 init() {
                     console.log("👉 [DocuCanvas] INIT EJECUTADO");
                     this.loadDocuments();
+                    
                     setInterval(() => {
                         if (this.view === 'upload' || this.view === 'indexing') {
                             this.loadDocuments();
@@ -179,10 +183,12 @@
                     });
 
                     try {
+                        const askBody = { question: q, maxChunks: 5 };
+                        if (this.selectedAskDocumentId) askBody.documentId = this.selectedAskDocumentId;
                         const res = await fetch('/api/v1/questions/ask', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ question: q, maxChunks: 5 })
+                            body: JSON.stringify(askBody)
                         });
                         if (res.ok) {
                             const data = await res.json();

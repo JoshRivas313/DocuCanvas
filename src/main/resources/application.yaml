@@ -2,23 +2,20 @@ spring:
   application:
     name: docu-canvas
   ai:
-    openai:
-      api-key: ${OPENAI_API_KEY:OPENAI_KEY_REMOVED}
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
       chat:
         options:
-          model: gpt-4o-mini
+          model: ${OLLAMA_CHAT_MODEL:llama3.2}
+          temperature: 0.7
+          num-ctx: 4096
       embedding:
         options:
-          model: text-embedding-3-small
-      image:
-        options:
-          model: dall-e-3
-          n: 1
-          size: 1024x1024
+          model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
     vectorstore:
       pgvector:
         table-name: document_chunks
-        dimensions: 1536
+        dimensions: 768
 
   datasource:
     url: jdbc:postgresql://localhost:5433/docucanvas

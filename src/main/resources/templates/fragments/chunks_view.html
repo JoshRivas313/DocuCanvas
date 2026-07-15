@@ -1,10 +1,9 @@
 <!-- templates/fragments/chunks_view.html -->
 <div th:fragment="chunks_view" x-show="view === 'chunks'" x-transition x-cloak>
     <div class="flex flex-col lg:flex-row gap-6">
-        
         <!-- Sidebar Unificado (25% en LG) -->
         <div class="w-full lg:w-1/4 flex flex-col gap-6">
-            
+
             <!-- Panel de Control y Filtros -->
             <div class="glass p-5 rounded-2xl space-y-4 border-sky-500/10">
                 <div class="flex items-center gap-3 border-b border-white/5 pb-3">
@@ -34,36 +33,47 @@
             <!-- Leyenda de Clusters (Dynamic Data) -->
             <div class="glass p-5 rounded-2xl flex-1 flex flex-col min-h-[45vh] border-white/5">
                 <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Temas Semánticos</h3>
-                <div class="space-y-2 overflow-y-auto pr-2 max-h-[30vh] custom-scrollbar">
+                <div class="space-y-2 overflow-y-auto pr-2 max-h-[30vh] premium-scrollbar">
                     <template x-for="group in clusterGroups" :key="group.name">
-                        <div class="flex flex-col gap-1 p-2 rounded-lg hover:bg-white/5 transition group cursor-default border border-transparent hover:border-white/5">
+                        <div
+                            class="flex flex-col gap-1 p-2 rounded-lg hover:bg-white/5 transition group cursor-default border border-transparent hover:border-white/5">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full" :style="'background-color: ' + group.color"></span>
+                                    <span class="w-2 h-2 rounded-full"
+                                        :style="'background-color: ' + group.color"></span>
                                     <span class="text-[11px] font-bold text-slate-200" x-text="group.name"></span>
                                 </div>
-                                <span class="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-slate-400" x-text="group.count"></span>
+                                <span class="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-slate-400"
+                                    x-text="group.count"></span>
                             </div>
-                            <p class="text-[9px] text-slate-500 italic truncate pl-4" x-text="'&quot;' + group.preview + '...&quot;'"></p>
+                            <p class="text-[9px] text-slate-500 italic truncate pl-4"
+                                x-text="'&quot;' + group.preview + '...&quot;'"></p>
                         </div>
                     </template>
                 </div>
 
-                <!-- Lista de Chunks (Mini Inspector) -->
+                <!-- Lista de Chunks con Slider Premium (Mini Inspector) -->
                 <div class="mt-6 pt-4 border-t border-white/5 flex-1 min-h-0 flex flex-col overflow-hidden">
                     <h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">Fragmentos en Vista</h3>
-                    <div class="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                    <div class="flex-1 overflow-y-auto space-y-2 pr-2 premium-scrollbar max-h-[140vh]">
                         <template x-for="chunk in filteredChunks" :key="chunk.id">
-                            <div @click="openChunkModal(chunk)" 
+                            <div @click="openChunkModal(chunk)"
                                 :class="selectedChunkId === chunk.id ? 'border-sky-500 bg-sky-900/40' : 'border-white/5 hover:bg-white/10'"
                                 class="p-2 border rounded-lg transition cursor-pointer text-[10px] leading-tight group">
-                                <p class="text-slate-400 line-clamp-2 group-hover:text-slate-200 transition" x-text="chunk.content"></p>
+                                <p class="text-slate-400 line-clamp-2 group-hover:text-slate-200 transition"
+                                    x-text="chunk.content"></p>
                                 <div class="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition">
-                                    <span class="w-1.5 h-1.5 rounded-full" :style="'background-color: ' + chunk.clusterColor"></span>
+                                    <span class="w-1.5 h-1.5 rounded-full"
+                                        :style="'background-color: ' + chunk.clusterColor"></span>
                                     <span class="text-[8px] text-sky-400 font-bold">VER DETALLE</span>
                                 </div>
                             </div>
                         </template>
+
+                        <!-- Empty State -->
+                        <div x-show="filteredChunks.length === 0" class="flex flex-col items-center justify-center py-8 text-slate-600 gap-2 text-center">
+                           <p class="text-[10px] uppercase font-bold tracking-widest opacity-40">Sin fragmentos</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -73,8 +83,9 @@
 
         <!-- Contenedor Principal: Mapa 3D (75% en LG) -->
         <div class="flex-1 lg:w-3/4 flex flex-col gap-4">
-            <div class="glass rounded-3xl relative overflow-hidden border-2 border-white/5 shadow-2xl bg-[#020617]" style="height: 75vh;">
-                
+            <div class="glass rounded-3xl relative overflow-hidden border-2 border-white/5 shadow-2xl bg-[#020617]"
+                style="height: 75vh;">
+
                 <!-- Loading Overlay -->
                 <div x-show="loadingChunks"
                     class="absolute inset-0 flex items-center justify-center bg-slate-900/95 z-40 backdrop-blur-md">
@@ -85,31 +96,41 @@
                                 <span class="text-[8px] font-bold text-sky-400">PCA</span>
                             </div>
                         </div>
-                        <p class="text-sky-400 font-bold animate-pulse tracking-widest text-[10px] uppercase">Analizando Espacio Latente</p>
+                        <p class="text-sky-400 font-bold animate-pulse tracking-widest text-[10px] uppercase">Analizando
+                            Espacio Latente</p>
                     </div>
                 </div>
-                
+
                 <!-- El Plotly Canvas -->
                 <div id="plotly-3d-map" class="w-full h-full"></div>
-                
+
                 <!-- Overlay de Información Flotante -->
-                <div x-show="hoveredChunk" x-transition 
+                <div x-show="hoveredChunk" x-transition
                     class="absolute top-6 right-6 glass p-5 rounded-2xl max-w-sm border-sky-500/50 shadow-2xl z-30 pointer-events-none backdrop-blur-xl">
                     <div class="flex items-center gap-2 mb-2">
-                        <span class="w-2.5 h-2.5 rounded-full" :style="'background-color: ' + (hoveredChunk?.clusterColor || '#000')"></span>
-                        <p class="text-[10px] font-bold text-sky-400 uppercase tracking-widest" x-text="hoveredChunk?.clusterName || ''"></p>
+                        <span class="w-2.5 h-2.5 rounded-full"
+                            :style="'background-color: ' + (hoveredChunk?.clusterColor || '#000')"></span>
+                        <p class="text-[10px] font-bold text-sky-400 uppercase tracking-widest"
+                            x-text="hoveredChunk?.clusterName || ''"></p>
                     </div>
-                    <p class="text-xs text-slate-100 leading-relaxed font-serif italic" x-text="'&quot;' + (hoveredChunk?.content || '') + '&quot;'"></p>
-                    <div class="mt-3 pt-3 border-t border-white/10 flex justify-between items-center text-[9px] text-slate-500 font-bold">
+                    <p class="text-xs text-slate-100 leading-relaxed font-serif italic"
+                        x-text="'&quot;' + (hoveredChunk?.content || '') + '&quot;'"></p>
+                    <div
+                        class="mt-3 pt-3 border-t border-white/10 flex justify-between items-center text-[9px] text-slate-500 font-bold">
                         <span x-text="hoveredChunk?.documentName || ''"></span>
                         <span x-text="'ID: ' + (hoveredChunk?.id?.substring(0,8) || '')"></span>
                     </div>
                 </div>
 
                 <!-- Botón Refrescar Flotante -->
-                <button @click="fetchChunks()" 
+                <button @click="fetchChunks()"
                     class="absolute bottom-6 left-6 p-4 bg-slate-800/90 hover:bg-sky-600 rounded-full transition shadow-xl border border-white/10 z-30 group">
-                    <svg class="w-5 h-5 text-white group-hover:rotate-180 transition duration-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+                    <svg class="w-5 h-5 text-white group-hover:rotate-180 transition duration-700" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+                    </svg>
                 </button>
             </div>
 
@@ -125,24 +146,35 @@
 
             <!-- DETALLE DE TEMAS SEMÁNTICOS (Grid inferior) -->
             <div class="mt-4 space-y-4">
-                <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-white/5 pb-2">Desglose de Temas Detectados</h3>
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-white/5 pb-2">
+                    Desglose de Temas Detectados</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <template x-for="group in clusterGroups" :key="group.name">
-                        <div class="glass p-5 rounded-2xl border-t-4 shadow-xl flex flex-col h-[450px]" :style="'border-color: ' + group.color">
+                        <div class="glass p-5 rounded-2xl border-t-4 shadow-xl flex flex-col h-[450px]"
+                            :style="'border-color: ' + group.color">
                             <div class="mb-4 border-b border-white/5 pb-3">
                                 <div class="flex items-center justify-between mb-1">
-                                    <h4 class="text-[10px] font-black uppercase tracking-widest text-white truncate pr-2" x-text="group.name"></h4>
-                                    <span class="text-[9px] bg-white/10 px-2 py-1 rounded-full text-slate-400 font-mono whitespace-nowrap" x-text="group.count + ' chunks'"></span>
+                                    <h4 class="text-[10px] font-black uppercase tracking-widest text-white truncate pr-2"
+                                        x-text="group.name"></h4>
+                                    <span
+                                        class="text-[9px] bg-white/10 px-2 py-1 rounded-full text-slate-400 font-mono whitespace-nowrap"
+                                        x-text="group.count + ' chunks'"></span>
                                 </div>
-                                <p class="text-[9px] text-slate-400 leading-tight italic" x-text="group.description"></p>
+                                <p class="text-[9px] text-slate-400 leading-tight italic" x-text="group.description">
+                                </p>
                             </div>
-                            
+
                             <div class="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-                                <template x-for="chunk in filteredChunks.filter(c => c.clusterName === group.name)" :key="chunk.id">
-                                    <div @click="openChunkModal(chunk)" class="bg-slate-900/50 p-3 rounded-xl border border-white/5 hover:border-sky-500/30 transition group cursor-pointer hover:bg-slate-800/60">
-                                        <p class="text-[10px] text-slate-300 leading-relaxed" x-text="chunk.content"></p>
-                                        <div class="mt-2 flex justify-between items-center opacity-40 group-hover:opacity-100 transition">
-                                            <span class="text-[8px] text-slate-500 font-mono truncate max-w-[120px]" x-text="chunk.documentName"></span>
+                                <template x-for="chunk in filteredChunks.filter(c => c.clusterName === group.name)"
+                                    :key="chunk.id">
+                                    <div @click="openChunkModal(chunk)"
+                                        class="bg-slate-900/50 p-3 rounded-xl border border-white/5 hover:border-sky-500/30 transition group cursor-pointer hover:bg-slate-800/60">
+                                        <p class="text-[10px] text-slate-300 leading-relaxed" x-text="chunk.content">
+                                        </p>
+                                        <div
+                                            class="mt-2 flex justify-between items-center opacity-40 group-hover:opacity-100 transition">
+                                            <span class="text-[8px] text-slate-500 font-mono truncate max-w-[120px]"
+                                                x-text="chunk.documentName"></span>
                                             <span class="text-[8px] text-sky-400 font-bold">VER DETALLE →</span>
                                         </div>
                                     </div>
@@ -158,35 +190,38 @@
     <!-- ═══════════════════════════════════════════════════════════ -->
     <!-- MODAL: Detalle del Chunk (Glassmorphism Premium)           -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div x-show="chunkModal.open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-         @click.self="closeChunkModal()" @keydown.escape.window="closeChunkModal()"
-         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
+    <div x-show="chunkModal.open" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0" @click.self="closeChunkModal()" @keydown.escape.window="closeChunkModal()"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
 
         <div x-show="chunkModal.open" x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 scale-90 translate-y-4"
-             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-90"
-             class="w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-3xl shadow-2xl border border-white/10"
-             style="background: linear-gradient(135deg, rgba(15,23,42,0.97) 0%, rgba(2,6,23,0.98) 100%);">
+            x-transition:enter-start="opacity-0 scale-90 translate-y-4"
+            x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-90"
+            class="w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-3xl shadow-2xl border border-white/10"
+            style="background: linear-gradient(135deg, rgba(15,23,42,0.97) 0%, rgba(2,6,23,0.98) 100%);">
 
             <!-- Header del Modal -->
             <div class="relative px-8 pt-8 pb-5 border-b border-white/5">
                 <div class="flex items-start justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-4 h-4 rounded-full shadow-lg animate-pulse"
-                             :style="'background-color: ' + (chunkModal.chunk?.clusterColor || '#38bdf8') + '; box-shadow: 0 0 20px ' + (chunkModal.chunk?.clusterColor || '#38bdf8') + '60'"></div>
+                            :style="'background-color: ' + (chunkModal.chunk?.clusterColor || '#38bdf8') + '; box-shadow: 0 0 20px ' + (chunkModal.chunk?.clusterColor || '#38bdf8') + '60'">
+                        </div>
                         <div>
                             <h2 class="text-lg font-black text-white tracking-tight">Detalle del Fragmento</h2>
-                            <p class="text-[10px] text-slate-500 font-mono mt-0.5" x-text="'ID: ' + (chunkModal.chunk?.id || '')"></p>
+                            <p class="text-[10px] text-slate-500 font-mono mt-0.5"
+                                x-text="'ID: ' + (chunkModal.chunk?.id || '')"></p>
                         </div>
                     </div>
                     <button @click="closeChunkModal()"
-                            class="p-2 rounded-xl hover:bg-white/10 transition text-slate-400 hover:text-white">
+                        class="p-2 rounded-xl hover:bg-white/10 transition text-slate-400 hover:text-white">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
@@ -195,72 +230,90 @@
             <!-- Body del Modal (Scrollable) -->
             <div class="px-8 py-6 overflow-y-auto max-h-[60vh] custom-scrollbar space-y-6">
 
+
+                <!-- Coordenadas 3D (Embedding Space) -->
+                <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                    <p class="text-[9px] text-slate-500 uppercase font-black tracking-wider mb-3">📐 Posición en Espacio
+                        Latente (PCA 3D)</p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="text-center">
+                            <p class="text-[9px] text-rose-400 font-black">EJE X</p>
+                            <p class="text-lg font-mono font-bold text-white"
+                                x-text="(chunkModal.chunk?.coordinates?.[0] || 0).toFixed(4)"></p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[9px] text-emerald-400 font-black">EJE Y</p>
+                            <p class="text-lg font-mono font-bold text-white"
+                                x-text="(chunkModal.chunk?.coordinates?.[1] || 0).toFixed(4)"></p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-[9px] text-indigo-400 font-black">EJE Z</p>
+                            <p class="text-lg font-mono font-bold text-white"
+                                x-text="(chunkModal.chunk?.coordinates?.[2] || 0).toFixed(4)"></p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Tarjetas de Metadatos -->
                 <div class="grid grid-cols-2 gap-3">
                     <div class="bg-white/5 p-4 rounded-xl border border-white/5">
-                        <p class="text-[9px] text-slate-500 uppercase font-black tracking-wider mb-1">📄 Documento Origen</p>
-                        <p class="text-sm font-bold text-sky-400 truncate" x-text="chunkModal.chunk?.documentName || 'N/A'"></p>
+                        <p class="text-[9px] text-slate-500 uppercase font-black tracking-wider mb-1">📄 Documento
+                            Origen</p>
+                        <p class="text-sm font-bold text-sky-400 truncate"
+                            x-text="chunkModal.chunk?.documentName || 'N/A'"></p>
                     </div>
                     <div class="bg-white/5 p-4 rounded-xl border border-white/5">
-                        <p class="text-[9px] text-slate-500 uppercase font-black tracking-wider mb-1">🏷️ Cluster Semántico</p>
+                        <p class="text-[9px] text-slate-500 uppercase font-black tracking-wider mb-1">🏷️ Cluster
+                            Semántico</p>
                         <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full" :style="'background-color: ' + (chunkModal.chunk?.clusterColor || '#38bdf8')"></span>
-                            <p class="text-sm font-bold text-white truncate" x-text="chunkModal.chunk?.clusterName || 'N/A'"></p>
+                            <span class="w-2 h-2 rounded-full"
+                                :style="'background-color: ' + (chunkModal.chunk?.clusterColor || '#38bdf8')"></span>
+                            <p class="text-sm font-bold text-white truncate"
+                                x-text="chunkModal.chunk?.clusterName || 'N/A'"></p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Descripción del Cluster -->
                 <div class="bg-gradient-to-r from-sky-900/20 to-indigo-900/20 p-4 rounded-xl border border-sky-500/10">
-                    <p class="text-[9px] text-sky-500 uppercase font-black tracking-wider mb-2">🧠 Descripción del Tema</p>
-                    <p class="text-xs text-slate-300 leading-relaxed italic" x-text="chunkModal.chunk?.clusterDescription || 'Sin descripción disponible'"></p>
+                    <p class="text-[9px] text-sky-500 uppercase font-black tracking-wider mb-2">🧠 Descripción del Tema
+                    </p>
+                    <p class="text-xs text-slate-300 leading-relaxed italic"
+                        x-text="chunkModal.chunk?.clusterDescription || 'Sin descripción disponible'"></p>
                 </div>
 
                 <!-- Contenido Completo del Chunk -->
                 <div>
                     <div class="flex items-center justify-between mb-3">
-                        <p class="text-[9px] text-slate-500 uppercase font-black tracking-wider">📝 Contenido Completo del Fragmento</p>
+                        <p class="text-[9px] text-slate-500 uppercase font-black tracking-wider">📝 Contenido Completo
+                            del Fragmento</p>
                         <span class="text-[9px] bg-sky-900/30 text-sky-400 px-2 py-1 rounded-full font-bold"
-                              x-text="(chunkModal.chunk?.fullContent?.length || 0) + ' caracteres'"></span>
+                            x-text="(chunkModal.chunk?.fullContent?.length || 0) + ' caracteres'"></span>
                     </div>
-                    <div class="bg-slate-900/80 p-5 rounded-xl border border-white/5 max-h-[30vh] overflow-y-auto custom-scrollbar">
+                    <div
+                        class="bg-slate-900/80 p-5 rounded-xl border border-white/5 max-h-[30vh] overflow-y-auto custom-scrollbar">
                         <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-serif"
-                           x-text="chunkModal.chunk?.fullContent || chunkModal.chunk?.content || ''"></p>
+                            x-text="chunkModal.chunk?.fullContent || chunkModal.chunk?.content || ''"></p>
                     </div>
                 </div>
 
-                <!-- Coordenadas 3D (Embedding Space) -->
-                <div class="bg-white/5 p-4 rounded-xl border border-white/5">
-                    <p class="text-[9px] text-slate-500 uppercase font-black tracking-wider mb-3">📐 Posición en Espacio Latente (PCA 3D)</p>
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="text-center">
-                            <p class="text-[9px] text-rose-400 font-black">EJE X</p>
-                            <p class="text-lg font-mono font-bold text-white" x-text="(chunkModal.chunk?.coordinates?.[0] || 0).toFixed(4)"></p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-[9px] text-emerald-400 font-black">EJE Y</p>
-                            <p class="text-lg font-mono font-bold text-white" x-text="(chunkModal.chunk?.coordinates?.[1] || 0).toFixed(4)"></p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-[9px] text-indigo-400 font-black">EJE Z</p>
-                            <p class="text-lg font-mono font-bold text-white" x-text="(chunkModal.chunk?.coordinates?.[2] || 0).toFixed(4)"></p>
-                        </div>
-                    </div>
-                </div>
+
             </div>
 
             <!-- Footer del Modal -->
             <div class="px-8 py-5 border-t border-white/5 flex justify-between items-center">
                 <button @click="selectChunk(chunkModal.chunk); closeChunkModal();"
-                        class="text-[10px] font-bold text-sky-400 hover:text-sky-300 transition flex items-center gap-2 bg-sky-500/10 px-4 py-2 rounded-xl hover:bg-sky-500/20">
+                    class="text-[10px] font-bold text-sky-400 hover:text-sky-300 transition flex items-center gap-2 bg-sky-500/10 px-4 py-2 rounded-xl hover:bg-sky-500/20">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
                     FOCALIZAR EN 3D
                 </button>
                 <button @click="closeChunkModal()"
-                        class="text-[10px] font-bold text-slate-500 hover:text-white transition bg-white/5 px-4 py-2 rounded-xl hover:bg-white/10">
+                    class="text-[10px] font-bold text-slate-500 hover:text-white transition bg-white/5 px-4 py-2 rounded-xl hover:bg-white/10">
                     CERRAR
                 </button>
             </div>

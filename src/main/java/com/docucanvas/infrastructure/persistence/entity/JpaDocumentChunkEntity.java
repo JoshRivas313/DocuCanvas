@@ -33,9 +33,11 @@ public class JpaDocumentChunkEntity {
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
-    public JpaDocumentChunkEntity() {}
+    public JpaDocumentChunkEntity() {
+    }
 
-    public JpaDocumentChunkEntity(UUID id, UUID documentId, String content, float[] embedding, String metadata, int chunkIndex, Instant createdAt) {
+    public JpaDocumentChunkEntity(UUID id, UUID documentId, String content, float[] embedding, String metadata,
+            int chunkIndex, Instant createdAt) {
         this.id = id;
         this.documentId = documentId;
         this.content = content;
@@ -50,20 +52,61 @@ public class JpaDocumentChunkEntity {
     }
 
     // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public UUID getDocumentId() { return documentId; }
-    public void setDocumentId(UUID documentId) { this.documentId = documentId; }
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
-    public float[] getEmbedding() { return embedding; }
-    public void setEmbedding(float[] embedding) { this.embedding = embedding; }
-    public String getMetadata() { return metadata; }
-    public void setMetadata(String metadata) { this.metadata = metadata; }
-    public int getChunkIndex() { return chunkIndex; }
-    public void setChunkIndex(int chunkIndex) { this.chunkIndex = chunkIndex; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public UUID getDocumentId() {
+        return documentId;
+    }
+
+    public void setDocumentId(UUID documentId) {
+        this.documentId = documentId;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public float[] getEmbedding() {
+        return embedding;
+    }
+
+    public void setEmbedding(float[] embedding) {
+        this.embedding = embedding;
+    }
+
+    public String getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(String metadata) {
+        this.metadata = metadata;
+    }
+
+    public int getChunkIndex() {
+        return chunkIndex;
+    }
+
+    public void setChunkIndex(int chunkIndex) {
+        this.chunkIndex = chunkIndex;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -79,17 +122,43 @@ public class JpaDocumentChunkEntity {
         private int chunkIndex;
         private Instant createdAt;
 
-        public JpaDocumentChunkEntityBuilder id(UUID id) { this.id = id; return this; }
-        public JpaDocumentChunkEntityBuilder documentId(UUID documentId) { this.documentId = documentId; return this; }
-        public JpaDocumentChunkEntityBuilder content(String content) { this.content = content; return this; }
-        public JpaDocumentChunkEntityBuilder embedding(float[] embedding) { this.embedding = embedding; return this; }
-        public JpaDocumentChunkEntityBuilder metadata(String metadata) { this.metadata = metadata; return this; }
-        public JpaDocumentChunkEntityBuilder chunkIndex(int chunkIndex) { this.chunkIndex = chunkIndex; return this; }
-        public JpaDocumentChunkEntityBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
+        public JpaDocumentChunkEntityBuilder id(UUID id) {
+            this.id = id;
+            return this;
+        }
+
+        public JpaDocumentChunkEntityBuilder documentId(UUID documentId) {
+            this.documentId = documentId;
+            return this;
+        }
+
+        public JpaDocumentChunkEntityBuilder content(String content) {
+            this.content = content;
+            return this;
+        }
+
+        public JpaDocumentChunkEntityBuilder embedding(float[] embedding) {
+            this.embedding = embedding;
+            return this;
+        }
+
+        public JpaDocumentChunkEntityBuilder metadata(String metadata) {
+            this.metadata = metadata;
+            return this;
+        }
+
+        public JpaDocumentChunkEntityBuilder chunkIndex(int chunkIndex) {
+            this.chunkIndex = chunkIndex;
+            return this;
+        }
+
+        public JpaDocumentChunkEntityBuilder createdAt(Instant createdAt) {
+            this.createdAt = createdAt;
+            return this;
+        }
 
         public JpaDocumentChunkEntity build() {
             return new JpaDocumentChunkEntity(id, documentId, content, embedding, metadata, chunkIndex, createdAt);
         }
     }
 }
-

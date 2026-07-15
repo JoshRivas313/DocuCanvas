@@ -125,7 +125,7 @@ public class ChunkService {
     }
 
     private List<Double> parseFullVector(String embText) {
-        if (embText == null || embText.length() <= 2) return new ArrayList<>(Collections.nCopies(1536, 0.0));
+        if (embText == null || embText.length() <= 2) return new ArrayList<>(Collections.nCopies(768, 0.0));
         try {
             String clean = embText.substring(1, embText.length() - 1);
             return Arrays.stream(clean.split(","))
@@ -134,7 +134,7 @@ public class ChunkService {
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.warn("Error parseando vector, usando vector nulo", e);
-            return new ArrayList<>(Collections.nCopies(1536, 0.0));
+            return new ArrayList<>(Collections.nCopies(768, 0.0));
         }
     }
 
