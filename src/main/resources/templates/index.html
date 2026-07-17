@@ -21,7 +21,6 @@
     <script>
         function docApp() {
             try {
-                console.log("🚀 [DocuCanvas] INICIALIZANDO docApp()");
             return {
                 view: 'upload',
                 indexingSubView: 'chunks', // 'chunks' or 'preview'
@@ -82,15 +81,26 @@
                     })).sort((a, b) => b.count - a.count);
                 },
 
+                // Polling state
+                pollTimer: null,
+
                 // Initialization
                 init() {
-                    console.log("👉 [DocuCanvas] INIT EJECUTADO");
                     this.loadDocuments();
-                    
-                    setInterval(() => {
+                    this.schedulePoll();
+                },
+
+                // Programa el siguiente sondeo solo si hay documentos en proceso.
+                // Evita el polling permanente cuando el sistema está en reposo.
+                schedulePoll() {
+                    if (this.pollTimer) clearTimeout(this.pollTimer);
+                    const hasProcessing = this.documents.some(d => d.status === 'PENDING' || d.status === 'PROCESSING');
+                    if (!hasProcessing) return;
+                    this.pollTimer = setTimeout(async () => {
                         if (this.view === 'upload' || this.view === 'indexing') {
-                            this.loadDocuments();
+                            await this.loadDocuments();
                         }
+                        this.schedulePoll();
                     }, 5000);
                 },
 
@@ -100,8 +110,9 @@
                         const res = await fetch('/api/v1/documents');
                         if (res.ok) {
                             const data = await res.json();
-                            // Only update if changed to avoid UI flickering
-                            if (JSON.stringify(data) !== JSON.stringify(this.documents)) {
+                            // Comparamos solo los campos que afectan a la UI para evitar parpadeos
+                            const signature = list => list.map(d => `${d.id}:${d.status}:${d.chunkCount}`).join('|');
+                            if (signature(data) !== signature(this.documents)) {
                                 this.documents = data;
                             }
                         }
@@ -116,9 +127,8 @@
                     try {
                         const res = await fetch('/api/v1/documents/upload', { method: 'POST', body: formData });
                         if (res.ok) {
-                            this.loadDocuments();
-                            const job = await res.json();
-                            // Optional: wait for job or just notify
+                            await this.loadDocuments();
+                            this.schedulePoll();
                         }
                     } catch (e) { console.error('Upload error:', e); }
                     finally { this.loading = false; }
@@ -135,7 +145,8 @@
                         });
                         if (res.ok) {
                             this.textIngest = { title: '', content: '' };
-                            this.loadDocuments();
+                            await this.loadDocuments();
+                            this.schedulePoll();
                         }
                     } catch (e) { console.error('Ingestion error:', e); }
                     finally { this.loading = false; }

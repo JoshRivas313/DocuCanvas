@@ -1,6 +1,9 @@
 spring:
   application:
     name: docu-canvas
+  threads:
+    virtual:
+      enabled: true
   ai:
     ollama:
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
@@ -29,7 +32,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true
+    show-sql: false
 
   flyway:
     enabled: true
@@ -42,5 +45,5 @@ spring:
 
 logging:
   level:
-    org.springframework.ai: DEBUG
-    com.docucanvas: DEBUG
+    org.springframework.ai: INFO
+    com.docucanvas: INFO

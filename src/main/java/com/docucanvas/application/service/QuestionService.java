@@ -1,18 +1,21 @@
 package com.docucanvas.application.service;
 
-import com.docucanvas.api.dto.request.QuestionRequest;
-import com.docucanvas.api.dto.response.QuestionResponse;
+import com.docucanvas.application.question.AnswerQuestionCommand;
+import com.docucanvas.application.question.AnswerResult;
+import com.docucanvas.application.question.Citation;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
 
-import com.docucanvas.api.dto.response.CitationDTO;
+import jakarta.annotation.PreDestroy;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 /**
@@ -45,10 +48,16 @@ public class QuestionService {
             5. Responde en el mismo idioma de la pregunta.
             """;
 
+    /** Tiempo máximo de espera por cada tarea paralela (LLM / infografía). */
+    private static final long AI_TASK_TIMEOUT_SECONDS = 60;
+    private static final int  DEFAULT_MAX_CHUNKS       = 5;
+
     private final ChatClient.Builder     chatClientBuilder;
     private final VectorStore            vectorStore;
     private final ImageGenerationService imageGenerationService;
-    private final ExecutorService        aiExecutor = Executors.newFixedThreadPool(2);
+    // Ejecutor sobre virtual threads: no fija un techo artificial de concurrencia
+    // y se cierra ordenadamente en @PreDestroy.
+    private final ExecutorService        aiExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public QuestionService(ChatClient.Builder chatClientBuilder,
                            VectorStore vectorStore,
@@ -58,12 +67,12 @@ public class QuestionService {
         this.imageGenerationService = imageGenerationService;
     }
 
-    public QuestionResponse answer(QuestionRequest request) {
+    public AnswerResult answer(AnswerQuestionCommand request) {
         log.info("Iniciando Pipeline RAG para: {}", request.question());
         long start = System.currentTimeMillis();
 
         // ── 1. Recuperación (Retrieval) ───────────────────────────────────
-        int topK = request.maxChunks() != null ? request.maxChunks() : 5;
+        int topK = request.maxChunks() != null ? request.maxChunks() : DEFAULT_MAX_CHUNKS;
 
         SearchRequest.Builder searchBuilder = SearchRequest.builder()
                 .query(request.question())
@@ -98,11 +107,11 @@ public class QuestionService {
 
         long retrievalEnd = System.currentTimeMillis();
 
-        List<CitationDTO> citations = docs.stream()
-                .map(d -> new CitationDTO(
+        List<Citation> citations = docs.stream()
+                .map(d -> new Citation(
                         (String) d.getMetadata().getOrDefault("source", "Documento"),
                         d.getContent(),
-                        0.99))
+                        similarityScore(d)))
                 .toList();
 
         // ── 2. Preparar contexto compartido ──────────────────────────────
@@ -138,12 +147,18 @@ public class QuestionService {
             }
         }, aiExecutor);
 
-        // ── 4. Esperar ambas tareas ───────────────────────────────────────
+        // ── 4. Esperar ambas tareas (con timeout para no bloquear el hilo HTTP) ──
         String answer;
         String imageUrl;
         try {
-            answer   = answerFuture.get();
-            imageUrl = imageFuture.get();
+            answer   = answerFuture.get(AI_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            imageUrl = imageFuture.get(AI_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.error("Timeout ({}s) esperando al modelo de IA", AI_TASK_TIMEOUT_SECONDS, e);
+            answerFuture.cancel(true);
+            imageFuture.cancel(true);
+            answer   = "El modelo de IA tardó demasiado en responder. Inténtalo de nuevo.";
+            imageUrl = "";
         } catch (Exception e) {
             log.error("Error esperando tareas paralelas: ", e);
             answer   = "Error al procesar la pregunta.";
@@ -152,7 +167,7 @@ public class QuestionService {
 
         long generationEnd = System.currentTimeMillis();
 
-        return new QuestionResponse(
+        return new AnswerResult(
                 request.question(),
                 answer,
                 citations,
@@ -162,5 +177,35 @@ public class QuestionService {
                 (generationEnd - retrievalEnd),
                 0 // La imagen se generó en paralelo, no suma al tiempo secuencial
         );
+    }
+
+    /**
+     * Deriva la similitud coseno real (0..1) de un documento recuperado.
+     *
+     * <p>PGVector expone la distancia coseno en la metadata bajo la clave
+     * {@code distance}; la similitud es {@code 1 - distancia}. Si el store no la
+     * proporciona, se devuelve {@code null} (score desconocido) en lugar de un
+     * valor inventado.
+     */
+    private Double similarityScore(org.springframework.ai.document.Document d) {
+        Object distance = d.getMetadata().get("distance");
+        if (distance instanceof Number n) {
+            double similarity = 1.0 - n.doubleValue();
+            return Math.max(0.0, Math.min(1.0, similarity));
+        }
+        return null;
+    }
+
+    @PreDestroy
+    void shutdownExecutor() {
+        aiExecutor.shutdown();
+        try {
+            if (!aiExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                aiExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            aiExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 }

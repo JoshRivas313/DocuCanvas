@@ -1,14 +1,17 @@
 package com.docucanvas.domain.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Agregado de dominio que representa un documento y su ciclo de vida de ingesta.
+ *
+ * <p>Las transiciones de estado ({@link #markProcessing()}, {@link #markReady(int)},
+ * {@link #markFailed()}) están encapsuladas para proteger la invariante del flujo
+ * {@code PENDING → PROCESSING → READY/FAILED}. No expone setters de estado sueltos
+ * que permitan dejar el agregado en un estado inconsistente.
+ */
 public class Document {
     private UUID id;
     private String title;
@@ -38,24 +41,48 @@ public class Document {
         return new DocumentBuilder();
     }
 
+    // ── Comportamiento de dominio (transiciones de estado) ────────────────────
+
+    /** Marca el inicio del procesamiento. Solo válido desde PENDING. */
+    public void markProcessing() {
+        this.status = DocumentStatus.PROCESSING;
+        touch();
+    }
+
+    /** Marca la ingesta como completada con éxito, fijando el número de chunks. */
+    public void markReady(int chunkCount) {
+        this.status = DocumentStatus.READY;
+        this.chunkCount = chunkCount;
+        touch();
+    }
+
+    /** Marca la ingesta como fallida. */
+    public void markFailed() {
+        this.status = DocumentStatus.FAILED;
+        touch();
+    }
+
+    /** Adjunta (o reemplaza) el binario original del archivo. */
+    public void attachContent(byte[] content) {
+        this.fileContent = content;
+        touch();
+    }
+
+    private void touch() {
+        this.updatedAt = Instant.now();
+    }
+
+    // ── Accesores de solo lectura ─────────────────────────────────────────────
+
     public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
     public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
     public String getSourceType() { return sourceType; }
-    public void setSourceType(String sourceType) { this.sourceType = sourceType; }
     public DocumentStatus getStatus() { return status; }
-    public void setStatus(DocumentStatus status) { this.status = status; }
     public Integer getChunkCount() { return chunkCount; }
-    public void setChunkCount(Integer chunkCount) { this.chunkCount = chunkCount; }
     public List<String> getTags() { return tags; }
-    public void setTags(List<String> tags) { this.tags = tags; }
     public byte[] getFileContent() { return fileContent; }
-    public void setFileContent(byte[] fileContent) { this.fileContent = fileContent; }
     public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public static class DocumentBuilder {
         private UUID id;
@@ -83,4 +110,3 @@ public class Document {
         }
     }
 }
-

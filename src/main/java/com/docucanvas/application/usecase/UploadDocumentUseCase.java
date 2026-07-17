@@ -38,7 +38,7 @@ public class UploadDocumentUseCase {
                     .updatedAt(Instant.now())
                     .build();
 
-            document.setFileContent(file.getBytes());
+            document.attachContent(file.getBytes());
             Document saved = documentRepository.save(document);
             
             // Trigger async processing

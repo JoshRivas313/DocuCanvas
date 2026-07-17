@@ -7,14 +7,12 @@ import com.docucanvas.application.service.IngestionService;
 import com.docucanvas.application.usecase.UploadDocumentUseCase;
 import com.docucanvas.domain.model.Document;
 import com.docucanvas.domain.model.DocumentStatus;
+import com.docucanvas.domain.model.DocumentSummary;
 import com.docucanvas.domain.repository.DocumentRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -36,8 +34,8 @@ public class DocumentController {
     }
 
     @GetMapping("/documents")
-    public List<Document> getAllDocuments() {
-        return documentRepository.findAll(100, 0);
+    public List<DocumentSummary> getAllDocuments() {
+        return documentRepository.findSummaries(100, 0);
     }
 
     @PostMapping("/documents/import-text")
@@ -104,24 +102,6 @@ public class DocumentController {
                             .body(doc.getFileContent());
                 })
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    // Inner class to avoid external test dependencies
-    private static class SimpleMultipartFile implements MultipartFile {
-        private final String name;
-        private final String contentType;
-        private final byte[] content;
-        public SimpleMultipartFile(String name, String contentType, byte[] content) {
-            this.name = name; this.contentType = contentType; this.content = content;
-        }
-        @Override public String getName() { return "file"; }
-        @Override public String getOriginalFilename() { return name; }
-        @Override public String getContentType() { return contentType; }
-        @Override public boolean isEmpty() { return content.length == 0; }
-        @Override public long getSize() { return content.length; }
-        @Override public byte[] getBytes() { return content; }
-        @Override public InputStream getInputStream() { return new ByteArrayInputStream(content); }
-        @Override public void transferTo(java.io.File dest) { throw new UnsupportedOperationException(); }
     }
 }
 

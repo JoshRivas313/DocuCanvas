@@ -1,6 +1,5 @@
 package com.docucanvas.application.service;
 
-import com.docucanvas.domain.model.DocumentStatus;
 import com.docucanvas.domain.repository.DocumentRepository;
 import com.docucanvas.infrastructure.storage.TikaExtractor;
 import org.springframework.ai.document.Document;
@@ -42,8 +41,8 @@ public class IngestionService {
                 .orElseThrow(() -> new RuntimeException("Document not found"));
 
         try {
-            domainDocument.setStatus(DocumentStatus.PROCESSING);
-            domainDocument.setFileContent(fileContent);
+            domainDocument.markProcessing();
+            domainDocument.attachContent(fileContent);
             documentRepository.save(domainDocument);
 
             // 1. Extraer Texto con Tika
@@ -68,15 +67,14 @@ public class IngestionService {
             vectorStore.add(springAiDocs);
 
             // 5. Completar Proceso
-            domainDocument.setStatus(DocumentStatus.READY);
-            domainDocument.setChunkCount(springAiDocs.size());
+            domainDocument.markReady(springAiDocs.size());
             documentRepository.save(domainDocument);
 
             log.info("Ingesta completada exitosamente para: {}", originalFilename);
 
         } catch (Exception e) {
             log.error("Fallo en la ingesta para documento: {}", documentId, e);
-            domainDocument.setStatus(DocumentStatus.FAILED);
+            domainDocument.markFailed();
             documentRepository.save(domainDocument);
         }
     }

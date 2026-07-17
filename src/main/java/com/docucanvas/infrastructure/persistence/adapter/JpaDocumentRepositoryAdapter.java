@@ -1,10 +1,13 @@
 package com.docucanvas.infrastructure.persistence.adapter;
 
+import com.docucanvas.application.port.out.ChunkWritePort;
 import com.docucanvas.domain.model.Document;
+import com.docucanvas.domain.model.DocumentSummary;
 import com.docucanvas.domain.repository.DocumentRepository;
 import com.docucanvas.infrastructure.persistence.entity.JpaDocumentEntity;
-import com.docucanvas.infrastructure.persistence.repository.JpaDocumentChunkRepository;
+import com.docucanvas.infrastructure.persistence.projection.DocumentSummaryView;
 import com.docucanvas.infrastructure.persistence.repository.JpaDocumentRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +20,12 @@ import java.util.stream.Collectors;
 public class JpaDocumentRepositoryAdapter implements DocumentRepository {
 
     private final JpaDocumentRepository documentRepository;
-    private final JpaDocumentChunkRepository chunkRepository;
+    private final ChunkWritePort chunkWritePort;
 
     public JpaDocumentRepositoryAdapter(JpaDocumentRepository documentRepository,
-                                        JpaDocumentChunkRepository chunkRepository) {
+                                        ChunkWritePort chunkWritePort) {
         this.documentRepository = documentRepository;
-        this.chunkRepository = chunkRepository;
+        this.chunkWritePort = chunkWritePort;
     }
 
     @Override
@@ -47,10 +50,33 @@ public class JpaDocumentRepositoryAdapter implements DocumentRepository {
     }
 
     @Override
+    public List<DocumentSummary> findSummaries(int limit, int offset) {
+        int page = limit > 0 ? offset / limit : 0;
+        return documentRepository
+                .findAllByOrderByCreatedAtDesc(PageRequest.of(page, limit))
+                .stream()
+                .map(this::toSummary)
+                .collect(Collectors.toList());
+    }
+
+    private DocumentSummary toSummary(DocumentSummaryView v) {
+        return new DocumentSummary(
+                v.getId(),
+                v.getTitle(),
+                v.getSourceType(),
+                v.getStatus(),
+                v.getChunkCount(),
+                List.of(),
+                v.getCreatedAt(),
+                v.getUpdatedAt());
+    }
+
+    @Override
     @Transactional
     public void delete(UUID id) {
-        // Al borrar el documento, borramos sus chunks de la tabla relacional (si PGVectorStore usa la misma tabla)
-        chunkRepository.deleteByDocumentId(id);
+        // El PGVectorStore es el dueño de la tabla document_chunks: se borran por
+        // el documentId almacenado en la metadata del chunk (no por FK relacional).
+        chunkWritePort.deleteByDocument(id);
         documentRepository.deleteById(id);
     }
 

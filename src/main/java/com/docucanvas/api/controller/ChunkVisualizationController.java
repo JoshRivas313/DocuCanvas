@@ -1,9 +1,8 @@
 package com.docucanvas.api.controller;
 
 import com.docucanvas.api.dto.ChunkDTO;
+import com.docucanvas.application.chunk.ChunkView;
 import com.docucanvas.application.service.ChunkService;
-import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,51 +14,44 @@ import java.util.List;
 /**
  * Controlador de visualización e inspección del VectorStore.
  *
- * <p>Expone endpoints que el frontend 3D utiliza para explorar
- * los chunks vectorizados almacenados en PGVector.
+ * <p>Expone los endpoints que el frontend 3D utiliza para explorar los chunks
+ * vectorizados. Traduce el modelo de aplicación ({@link ChunkView}) al DTO de la
+ * API ({@link ChunkDTO}).
  */
 @RestController
 @RequestMapping("/api/v1/chunks")
 public class ChunkVisualizationController {
 
     private final ChunkService chunkService;
-    private final VectorStore vectorStore;
 
-    public ChunkVisualizationController(ChunkService chunkService, VectorStore vectorStore) {
+    public ChunkVisualizationController(ChunkService chunkService) {
         this.chunkService = chunkService;
-        this.vectorStore = vectorStore;
     }
 
-    /**
-     * Retorna hasta 50 chunks con sus primeras 3 dimensiones vectoriales
-     * para renderizado en el espacio 3D del frontend.
-     */
     @GetMapping("/visualize")
     public List<ChunkDTO> getChunks() {
-        return chunkService.getChunksForVisualization();
+        return chunkService.getChunksForVisualization().stream().map(this::toDto).toList();
     }
 
-    /**
-     * Retorna los chunks específicos de un documento ingerido.
-     * Utilizado para la vista de Indexación individual.
-     */
     @GetMapping("/document/{documentId}")
     public List<ChunkDTO> getChunksByDocumentId(@PathVariable String documentId) {
-        return chunkService.getChunksByDocumentId(documentId);
+        return chunkService.getChunksByDocumentId(documentId).stream().map(this::toDto).toList();
     }
 
-    /**
-     * Búsqueda semántica de chunks por texto libre.
-     *
-     * @param query texto de búsqueda semántica
-     * @return lista de IDs de chunks más similares
-     */
     @GetMapping("/search")
     public List<String> searchChunks(@RequestParam("query") String query) {
-        return vectorStore.similaritySearch(SearchRequest.builder().query(query).topK(5).build())
-                .stream()
-                .map(org.springframework.ai.document.Document::getId)
-                .toList();
+        return chunkService.searchSimilarChunkIds(query);
+    }
+
+    private ChunkDTO toDto(ChunkView v) {
+        return new ChunkDTO(
+                v.id(),
+                v.preview(),
+                v.fullContent(),
+                v.coordinates(),
+                v.documentName(),
+                v.clusterName(),
+                v.clusterDescription(),
+                v.clusterColor());
     }
 }
-
