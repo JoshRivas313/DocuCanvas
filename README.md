@@ -17,8 +17,8 @@ DocuCanvas es una plataforma de consulta inteligente sobre documentos que utiliz
 | :--- | :--- | :--- |
 | **Java** | 21 | Soporte para Virtual Threads y características modernas del lenguaje. |
 | **Spring Boot** | 3.4.4 | Framework base robusto con soporte nativo para IA. |
-| **Spring AI** | 1.0.0-M5 | Abstracciones para VectorStore, ChatClient e ImageModel. |
-| **OpenAI** | Latest | Modelos GPT-4o-mini y DALL-E 3 para RAG y visión. |
+| **Spring AI** | 1.0.0-M5 | Abstracciones para VectorStore y ChatClient. |
+| **Ollama** | Latest | LLM local (`llama3.2`) para RAG y embeddings (`nomic-embed-text`, 768d). 100% local, sin API externa. |
 | **PGVector** | 16 | Extensión de PostgreSQL para búsqueda vectorial nativa con SQL. |
 | **Thymeleaf** | 3.x | Motor de plantillas para un frontend modular y eficiente. |
 | **Alpine.js** | 3.x | Reactividad ligera para la gestión de estados en la UI. |
@@ -127,9 +127,9 @@ c:/intelijent/Proyecto_Base_SpringBoot/
 
 ### 🧠 Inteligencia Artificial (RAG)
 
-#### 5. Pregunta RAG Multimodal
+#### 5. Pregunta RAG + Infografía
 - **URL**: `POST /api/v1/questions/ask`
-- **Uso**: Realiza una pregunta basada en el contexto de los documentos e invoca al `ImageModel`.
+- **Uso**: Responde con el contexto de los documentos (Ollama) y genera una infografía SVG local en paralelo.
 - **Request (JSON)**:
 ```json
 {
@@ -138,13 +138,15 @@ c:/intelijent/Proyecto_Base_SpringBoot/
   "maxChunks": 5
 }
 ```
-- **Response (JSON)**:
+- **Response (JSON)**: el `imageUrl` es un Data URL SVG (`data:image/svg+xml;base64,...`), no una URL externa.
 ```json
 {
   "question": "¿De qué trata el capítulo 1?",
   "answer": "El capítulo 1 trata sobre...",
-  "sources": ["Manual_Gatos.pdf"],
-  "imageUrl": "https://url-a-la-imagen-generada.com/..."
+  "citations": [{ "source": "Manual_Gatos.pdf", "content": "...", "score": 0.82 }],
+  "imageUrl": "data:image/svg+xml;base64,PHN2Zy4uLg==",
+  "retrievalTimeMs": 45,
+  "generationTimeMs": 1200
 }
 ```
 
@@ -159,13 +161,13 @@ El proyecto sigue una **Arquitectura Hexagonal**, asegurando que el dominio est�
 1. **Ingesta e Indexación**:
    - Extrae texto con **Apache Tika**.
    - Genera fragmentos inteligentes (Chunks) con **TokenTextSplitter**.
-   - Calcula embeddings de 1536 dimensiones y los persiste físicamente en **PGVector**.
+   - Calcula embeddings de **768 dimensiones** (`nomic-embed-text`) y los persiste físicamente en **PGVector**.
    - **Optimización**: Los fragmentos se proyectan a 3D usando **SVD** para una visualización fluida.
 
-2. **RAG Multimodal**:
+2. **RAG + Infografía**:
    - Búsqueda semántica sobre los fragmentos indexados.
-   - Generación de respuesta contextual con GPT-4o-mini.
-   - Creación de una **infografía visual** con DALL-E 3 basada en la respuesta generada.
+   - Generación de respuesta contextual con **Ollama (`llama3.2`)**, 100% local.
+   - Creación de una **infografía SVG** generada localmente (sin API externa, sin GPU) a partir del contexto recuperado.
 
 ---
 
@@ -174,11 +176,30 @@ El proyecto sigue una **Arquitectura Hexagonal**, asegurando que el dominio est�
 1.  **📤 Subir**: Carga de archivos (**PDF, DOCX, TXT**) y texto directo con persistencia binaria inmediata.
 2.  **📑 Vista Indexación**: Auditoría de fragmentos y **Previsualizador Multiformato** (ver PDF/TXT al lado de los chunks).
 3.  **🌍 Visor de Embeddings**: Mapa 3D interactivo con **Clusters Semánticos dinámicos** (grupos por colores).
-4.  **💬 Preguntar**: Chat RAG con fuentes citadas y generación de imágenes generativas por respuesta.
+4.  **💬 Preguntar**: Chat RAG con fuentes citadas e infografía SVG generada localmente por respuesta.
 
 ---
 
 ## 🔐 Notas de Configuración
-- **API Key**: Se configura en `application.yaml` o mediante la variable de entorno `OPENAI_API_KEY`.
+
+### Perfiles (`dev` / `prod`)
+El perfil activo por defecto es `dev` (acceso abierto, pensado para la demo local). Actívalo explícitamente con `SPRING_PROFILES_ACTIVE`:
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "prod"; ./mvnw spring-boot:run
+```
+- **`dev`**: acceso abierto, logging verboso del proyecto.
+- **`prod`**: cabeceras de seguridad endurecidas (HSTS, Referrer-Policy), logging conservador. Punto de extensión listo para exigir autenticación (ver `SecurityConfig`).
+
+### Credenciales (nunca hardcodeadas)
+La conexión a BD se externaliza por variables de entorno (con defaults para desarrollo):
+`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`.
+
+### Ollama (IA local)
+Se configura vía `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MODEL`, `OLLAMA_EMBEDDING_MODEL`. No requiere ninguna API key externa.
+
+### Rate limiting
+Los endpoints costosos (`/questions/ask`, `/documents/upload`, `/documents/import-text`) están protegidos por un límite por IP configurable: `RATELIMIT_CAPACITY` (def. 20) por `RATELIMIT_WINDOW_SECONDS` (def. 60).
+
+### Otros
 - **Database**: PostgreSQL corre en puerto `5433` vía Docker para evitar conflictos locales.
 - **X-Frame-Options**: Configurado como `SAMEORIGIN` en `SecurityConfig` para permitir la previsualización de archivos en iframes.

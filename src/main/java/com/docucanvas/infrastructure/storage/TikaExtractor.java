@@ -1,11 +1,8 @@
 package com.docucanvas.infrastructure.storage;
 
-import lombok.extern.slf4j.Slf4j;
+import com.docucanvas.domain.exception.TextExtractionException;
 import org.apache.tika.Tika;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
 
 @Component
 public class TikaExtractor {
@@ -19,7 +16,7 @@ public class TikaExtractor {
             return tika.parseToString(new java.io.ByteArrayInputStream(content));
         } catch (Exception e) {
             log.error("Failed to extract text from file: {}", filename, e);
-            throw new RuntimeException("Error extracting text: " + e.getMessage());
+            throw new TextExtractionException(filename, e);
         }
     }
 }

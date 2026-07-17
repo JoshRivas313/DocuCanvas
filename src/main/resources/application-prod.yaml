@@ -1,0 +1,16 @@
+# Perfil de producción.
+# Cabeceras de seguridad endurecidas (ver SecurityConfig) y logging conservador.
+# Las credenciales de BD DEBEN venir por variables de entorno
+# (DB_URL, DB_USERNAME, DB_PASSWORD); nunca hardcodeadas.
+spring:
+  jpa:
+    show-sql: false
+  flyway:
+    # En producción no se limpia la BD; solo migraciones incrementales.
+    clean-disabled: true
+
+logging:
+  level:
+    root: WARN
+    com.docucanvas: INFO
+    org.springframework.ai: WARN

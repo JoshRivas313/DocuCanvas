@@ -1,6 +1,7 @@
 package com.docucanvas.application.usecase;
 
 import com.docucanvas.application.service.IngestionService;
+import com.docucanvas.domain.exception.UnsupportedFileTypeException;
 import com.docucanvas.domain.model.Document;
 import com.docucanvas.domain.model.DocumentStatus;
 import com.docucanvas.domain.repository.DocumentRepository;
@@ -9,15 +10,19 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class UploadDocumentUseCase {
 
+    /** Tipos de archivo admitidos para ingesta (extensión en mayúsculas). */
+    private static final Set<String> ALLOWED_TYPES = Set.of("PDF", "DOCX", "DOC", "TXT", "TEXT", "MD");
+
     private final DocumentRepository documentRepository;
     private final IngestionService ingestionService;
 
-    public UploadDocumentUseCase(DocumentRepository documentRepository, 
+    public UploadDocumentUseCase(DocumentRepository documentRepository,
                                  IngestionService ingestionService) {
         this.documentRepository = documentRepository;
         this.ingestionService = ingestionService;
@@ -27,6 +32,9 @@ public class UploadDocumentUseCase {
         try {
             byte[] content = file.getBytes();
             String sourceType = getFileExtension(file.getOriginalFilename());
+            if (!ALLOWED_TYPES.contains(sourceType)) {
+                throw new UnsupportedFileTypeException(sourceType);
+            }
             Document document = Document.builder()
                     .id(UUID.randomUUID())
                     .title(title != null ? title : file.getOriginalFilename())

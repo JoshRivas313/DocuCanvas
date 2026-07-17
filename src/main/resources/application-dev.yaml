@@ -1,0 +1,10 @@
+# Perfil de desarrollo / demo.
+# Acceso abierto (ver SecurityConfig) y logging verboso del propio proyecto.
+spring:
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.docucanvas: DEBUG
+    org.springframework.ai: INFO

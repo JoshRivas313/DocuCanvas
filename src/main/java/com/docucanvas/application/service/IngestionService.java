@@ -1,5 +1,6 @@
 package com.docucanvas.application.service;
 
+import com.docucanvas.domain.exception.DocumentNotFoundException;
 import com.docucanvas.domain.repository.DocumentRepository;
 import com.docucanvas.infrastructure.storage.TikaExtractor;
 import org.springframework.ai.document.Document;
@@ -38,7 +39,7 @@ public class IngestionService {
         log.info("Starting ingestion for document: {}", documentId);
 
         com.docucanvas.domain.model.Document domainDocument = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
+                .orElseThrow(() -> new DocumentNotFoundException(documentId));
 
         try {
             // El binario ya se persistió al crear el documento; aquí solo se

@@ -1,5 +1,8 @@
 package com.docucanvas.api.controller;
 
+import com.docucanvas.domain.exception.DocumentNotFoundException;
+import com.docucanvas.domain.exception.TextExtractionException;
+import com.docucanvas.domain.exception.UnsupportedFileTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -80,6 +83,42 @@ public class GlobalExceptionHandler {
         problem.setType(URI.create("https://docucanvas.io/errors/ai-service-unavailable"));
         problem.setTitle("Servicio de IA no disponible");
         problem.setDetail("Ollama no pudo procesar la solicitud. Verifica que esté corriendo con 'docker-compose up ollama'.");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    /** Documento inexistente → 404. */
+    @ExceptionHandler(DocumentNotFoundException.class)
+    public ProblemDetail handleDocumentNotFound(DocumentNotFoundException ex) {
+        log.warn("Documento no encontrado: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://docucanvas.io/errors/document-not-found"));
+        problem.setTitle("Documento no encontrado");
+        problem.setDetail(ex.getMessage());
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    /** Tipo de archivo no permitido → 415. */
+    @ExceptionHandler(UnsupportedFileTypeException.class)
+    public ProblemDetail handleUnsupportedFileType(UnsupportedFileTypeException ex) {
+        log.warn("Tipo de archivo no soportado: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        problem.setType(URI.create("https://docucanvas.io/errors/unsupported-file-type"));
+        problem.setTitle("Tipo de archivo no soportado");
+        problem.setDetail(ex.getMessage() + ". Formatos permitidos: PDF, DOCX, DOC, TXT, MD.");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    /** Fallo de extracción de texto → 422. */
+    @ExceptionHandler(TextExtractionException.class)
+    public ProblemDetail handleTextExtraction(TextExtractionException ex) {
+        log.error("Fallo extrayendo texto: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        problem.setType(URI.create("https://docucanvas.io/errors/text-extraction"));
+        problem.setTitle("No se pudo procesar el archivo");
+        problem.setDetail("El contenido del archivo no pudo extraerse. Verifica que no esté corrupto o protegido.");
         problem.setProperty("timestamp", Instant.now());
         return problem;
     }
