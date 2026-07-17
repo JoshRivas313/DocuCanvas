@@ -4,7 +4,6 @@ import com.docucanvas.application.service.IngestionService;
 import com.docucanvas.domain.model.Document;
 import com.docucanvas.domain.model.DocumentStatus;
 import com.docucanvas.domain.repository.DocumentRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,6 +25,7 @@ public class UploadDocumentUseCase {
 
     public Document execute(MultipartFile file, String title) {
         try {
+            byte[] content = file.getBytes();
             String sourceType = getFileExtension(file.getOriginalFilename());
             Document document = Document.builder()
                     .id(UUID.randomUUID())
@@ -38,12 +38,11 @@ public class UploadDocumentUseCase {
                     .updatedAt(Instant.now())
                     .build();
 
-            document.attachContent(file.getBytes());
+            document.attachContent(content);
             Document saved = documentRepository.save(document);
-            
-            // Trigger async processing
-            byte[] bytes = file.getBytes();
-            ingestionService.processIngestion(saved.getId(), bytes, file.getOriginalFilename());
+
+            // Trigger async processing (reutiliza el mismo array, sin releer el archivo)
+            ingestionService.processIngestion(saved.getId(), content, file.getOriginalFilename());
 
             return saved;
         } catch (java.io.IOException e) {

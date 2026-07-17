@@ -41,8 +41,9 @@ public class IngestionService {
                 .orElseThrow(() -> new RuntimeException("Document not found"));
 
         try {
+            // El binario ya se persistió al crear el documento; aquí solo se
+            // actualiza el estado (no se reescribe el contenido).
             domainDocument.markProcessing();
-            domainDocument.attachContent(fileContent);
             documentRepository.save(domainDocument);
 
             // 1. Extraer Texto con Tika

@@ -21,6 +21,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Orquesta la vista de chunks: lectura (puerto) → reducción PCA (puerto) →
@@ -74,7 +77,7 @@ public class ChunkService {
     /**
      * Recupera chunks y aplica PCA + Clustering dinámico para la vista global.
      */
-    @Cacheable(value = "chunksGlobal")
+    @Cacheable(value = "chunksGlobal", sync = true)
     public List<ChunkView> getChunksForVisualization() {
         log.info("Calculando proyección 3D con PCA y Clustering dinámico para vista global (CACHE MISS)");
         List<RawChunk> rawData = chunkReadPort.findForGlobalView(MAX_CHUNKS_VISUALIZE);
@@ -85,7 +88,7 @@ public class ChunkService {
     /**
      * Recupera todos los chunks asociados a un documento con su proyección PCA.
      */
-    @Cacheable(value = "chunksDoc", key = "#documentId")
+    @Cacheable(value = "chunksDoc", key = "#documentId", sync = true)
     public List<ChunkView> getChunksByDocumentId(String documentId) {
         log.info("Generando vista de indexación para documento: {} (CACHE MISS)", documentId);
         List<RawChunk> rawData = chunkReadPort.findByDocument(documentId);
@@ -109,10 +112,7 @@ public class ChunkService {
                     .add(rawData.get(i).content());
         }
 
-        Map<Integer, ClusterName> clusterNames = new HashMap<>();
-        for (int i = 0; i < k; i++) {
-            clusterNames.put(i, clusterNaming.name(i, clusterContents.getOrDefault(i, List.of())));
-        }
+        Map<Integer, ClusterName> clusterNames = nameClustersInParallel(k, clusterContents);
 
         // 4. Ensamblar la vista
         List<ChunkView> result = new ArrayList<>(rawData.size());
@@ -132,6 +132,28 @@ public class ChunkService {
                     ClusterPalette.colorFor(clusterIdx)));
         }
         return result;
+    }
+
+    /**
+     * Nombra los k clusters en paralelo (cada nombrado es una llamada al LLM,
+     * I/O-bound). Con virtual threads la latencia total pasa de {@code k·t} a ~{@code t}.
+     */
+    private Map<Integer, ClusterName> nameClustersInParallel(int k, Map<Integer, List<String>> clusterContents) {
+        Map<Integer, ClusterName> names = new HashMap<>();
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<CompletableFuture<Map.Entry<Integer, ClusterName>>> futures = new ArrayList<>(k);
+            for (int i = 0; i < k; i++) {
+                final int idx = i;
+                futures.add(CompletableFuture.supplyAsync(
+                        () -> Map.entry(idx, clusterNaming.name(idx, clusterContents.getOrDefault(idx, List.of()))),
+                        executor));
+            }
+            for (CompletableFuture<Map.Entry<Integer, ClusterName>> f : futures) {
+                Map.Entry<Integer, ClusterName> entry = f.join();
+                names.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return names;
     }
 
     /**
