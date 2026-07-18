@@ -3,6 +3,7 @@ package com.docucanvas.api.controller;
 import com.docucanvas.api.dto.request.TextImportRequest;
 import com.docucanvas.api.dto.response.AcceptedJobResponse;
 import com.docucanvas.api.dto.response.IngestionJobResponse;
+import com.docucanvas.application.port.out.BlobStoragePort;
 import com.docucanvas.application.service.IngestionService;
 import com.docucanvas.application.usecase.ImportTextUseCase;
 import com.docucanvas.application.usecase.UploadDocumentUseCase;
@@ -13,7 +14,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,15 +28,18 @@ public class DocumentController {
     private final ImportTextUseCase importTextUseCase;
     private final DocumentRepository documentRepository;
     private final IngestionService ingestionService;
+    private final BlobStoragePort blobStoragePort;
 
     public DocumentController(UploadDocumentUseCase uploadDocumentUseCase,
                               ImportTextUseCase importTextUseCase,
                               DocumentRepository documentRepository,
-                              IngestionService ingestionService) {
+                              IngestionService ingestionService,
+                              BlobStoragePort blobStoragePort) {
         this.uploadDocumentUseCase = uploadDocumentUseCase;
         this.importTextUseCase = importTextUseCase;
         this.documentRepository = documentRepository;
         this.ingestionService = ingestionService;
+        this.blobStoragePort = blobStoragePort;
     }
 
     @GetMapping("/documents")
@@ -75,28 +81,34 @@ public class DocumentController {
     }
 
     @GetMapping("/documents/{id}/file")
-    public ResponseEntity<byte[]> getDocumentFile(@PathVariable UUID id) {
-        return documentRepository.findById(id)
-                .filter(doc -> doc.getFileContent() != null)
-                .map(doc -> {
-                    String contentType = switch (doc.getSourceType().toUpperCase()) {
-                        case "PDF" -> "application/pdf";
-                        case "DOCX" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-                        case "TXT", "TEXT" -> "text/plain";
-                        case "PNG" -> "image/png";
-                        case "JPG", "JPEG" -> "image/jpeg";
-                        case "JSON" -> "application/json";
-                        default -> "application/octet-stream";
-                    };
-                    
-                    return ResponseEntity.ok()
-                            .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, contentType)
-                            .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.getTitle() + "\"")
-                            .header("X-Frame-Options", "SAMEORIGIN")
-                            .header("Content-Security-Policy", "frame-ancestors 'self'")
-                            .body(doc.getFileContent());
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<StreamingResponseBody> getDocumentFile(@PathVariable UUID id) {
+        Document doc = documentRepository.findById(id).orElse(null);
+        if (doc == null) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] content = blobStoragePort.find(id).orElse(null);
+        if (content == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String contentType = switch (doc.getSourceType().toUpperCase()) {
+            case "PDF" -> "application/pdf";
+            case "DOCX" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "TXT", "TEXT" -> "text/plain";
+            case "PNG" -> "image/png";
+            case "JPG", "JPEG" -> "image/jpeg";
+            case "JSON" -> "application/json";
+            default -> "application/octet-stream";
+        };
+
+        StreamingResponseBody body = out -> new ByteArrayInputStream(content).transferTo(out);
+
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, contentType)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.getTitle() + "\"")
+                .header("X-Frame-Options", "SAMEORIGIN")
+                .header("Content-Security-Policy", "frame-ancestors 'self'")
+                .body(body);
     }
 }
 

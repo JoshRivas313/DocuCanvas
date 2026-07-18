@@ -1,5 +1,6 @@
 package com.docucanvas.application.usecase;
 
+import com.docucanvas.application.port.out.BlobStoragePort;
 import com.docucanvas.application.service.IngestionService;
 import com.docucanvas.domain.exception.UnsupportedFileTypeException;
 import com.docucanvas.domain.model.Document;
@@ -25,14 +26,15 @@ class UploadDocumentUseCaseTest {
 
     @Mock private com.docucanvas.domain.repository.DocumentRepository documentRepository;
     @Mock private IngestionService ingestionService;
+    @Mock private BlobStoragePort blobStoragePort;
 
     private UploadDocumentUseCase useCase() {
         when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
-        return new UploadDocumentUseCase(documentRepository, ingestionService);
+        return new UploadDocumentUseCase(documentRepository, ingestionService, blobStoragePort);
     }
 
     @Test
-    @DisplayName("Flujo feliz: deriva el tipo de la extensión, crea en PENDING y dispara ingesta con los bytes")
+    @DisplayName("Flujo feliz: deriva el tipo de la extensión, crea en PENDING, guarda el blob y dispara ingesta")
     void flujoFeliz() {
         UploadDocumentUseCase useCase = useCase();
         byte[] contenido = "%PDF-1.4 contenido".getBytes();
@@ -44,8 +46,8 @@ class UploadDocumentUseCaseTest {
         verify(documentRepository).save(saved.capture());
         assertThat(saved.getValue().getStatus()).isEqualTo(DocumentStatus.PENDING);
         assertThat(saved.getValue().getSourceType()).isEqualTo("PDF");
-        assertThat(saved.getValue().getFileContent()).isEqualTo(contenido);
 
+        verify(blobStoragePort).store(eq(result.getId()), eq(contenido));
         verify(ingestionService).processIngestion(eq(result.getId()), eq(contenido), eq("informe.pdf"));
     }
 
@@ -63,13 +65,13 @@ class UploadDocumentUseCaseTest {
     @Test
     @DisplayName("Extensión no permitida debe lanzar UnsupportedFileTypeException sin persistir ni ingerir")
     void extensionNoPermitidaRechaza() {
-        UploadDocumentUseCase useCase = new UploadDocumentUseCase(documentRepository, ingestionService);
+        UploadDocumentUseCase useCase = new UploadDocumentUseCase(documentRepository, ingestionService, blobStoragePort);
         MockMultipartFile file = new MockMultipartFile("file", "malware.exe", "application/octet-stream", "MZ".getBytes());
 
         assertThatThrownBy(() -> useCase.execute(file, "x"))
                 .isInstanceOf(UnsupportedFileTypeException.class);
 
-        verifyNoInteractions(ingestionService);
+        verifyNoInteractions(ingestionService, blobStoragePort);
         verify(documentRepository, never()).save(any());
     }
 }

@@ -1,5 +1,6 @@
 package com.docucanvas.application.usecase;
 
+import com.docucanvas.application.port.out.BlobStoragePort;
 import com.docucanvas.application.service.IngestionService;
 import com.docucanvas.domain.exception.UnsupportedFileTypeException;
 import com.docucanvas.domain.model.Document;
@@ -26,14 +27,15 @@ class ImportTextUseCaseTest {
 
     @Mock private com.docucanvas.domain.repository.DocumentRepository documentRepository;
     @Mock private IngestionService ingestionService;
+    @Mock private BlobStoragePort blobStoragePort;
 
     private ImportTextUseCase useCase() {
         when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
-        return new ImportTextUseCase(documentRepository, ingestionService);
+        return new ImportTextUseCase(documentRepository, ingestionService, blobStoragePort);
     }
 
     @Test
-    @DisplayName("Flujo feliz: crea el documento en PENDING y dispara la ingesta con los mismos bytes")
+    @DisplayName("Flujo feliz: crea el documento en PENDING, guarda el blob y dispara la ingesta con los mismos bytes")
     void flujoFeliz() {
         ImportTextUseCase useCase = useCase();
 
@@ -45,9 +47,12 @@ class ImportTextUseCaseTest {
         assertThat(savedDoc.getValue().getSourceType()).isEqualTo("TEXT");
         assertThat(savedDoc.getValue().getTitle()).isEqualTo("Mi nota");
 
+        byte[] esperados = "Contenido de prueba".getBytes(StandardCharsets.UTF_8);
+        verify(blobStoragePort).store(eq(result.getId()), eq(esperados));
+
         ArgumentCaptor<byte[]> ingestedBytes = ArgumentCaptor.forClass(byte[].class);
         verify(ingestionService).processIngestion(eq(result.getId()), ingestedBytes.capture(), eq("Mi nota"));
-        assertThat(ingestedBytes.getValue()).isEqualTo("Contenido de prueba".getBytes(StandardCharsets.UTF_8));
+        assertThat(ingestedBytes.getValue()).isEqualTo(esperados);
     }
 
     @Test
@@ -68,12 +73,12 @@ class ImportTextUseCaseTest {
     @Test
     @DisplayName("sourceType no permitido debe lanzar UnsupportedFileTypeException sin persistir ni ingerir")
     void tipoNoPermitidoRechaza() {
-        ImportTextUseCase useCase = new ImportTextUseCase(documentRepository, ingestionService);
+        ImportTextUseCase useCase = new ImportTextUseCase(documentRepository, ingestionService, blobStoragePort);
 
         assertThatThrownBy(() -> useCase.execute("t", "c", "EXE"))
                 .isInstanceOf(UnsupportedFileTypeException.class);
 
-        verifyNoInteractions(ingestionService);
+        verifyNoInteractions(ingestionService, blobStoragePort);
         verify(documentRepository, never()).save(any());
     }
 

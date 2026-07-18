@@ -66,15 +66,4 @@ class DocumentTest {
         assertThat(doc.getStatus()).isEqualTo(DocumentStatus.FAILED);
         assertThat(doc.getChunkCount()).isZero();
     }
-
-    @Test
-    @DisplayName("attachContent debe adjuntar el binario y refrescar updatedAt")
-    void attachContentAdjuntaBinario() {
-        Document doc = nuevoDocumento();
-        byte[] contenido = "hola".getBytes();
-
-        doc.attachContent(contenido);
-
-        assertThat(doc.getFileContent()).isEqualTo(contenido);
-    }
 }

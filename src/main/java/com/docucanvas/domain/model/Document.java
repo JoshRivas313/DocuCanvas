@@ -11,6 +11,11 @@ import java.util.UUID;
  * {@link #markFailed()}) están encapsuladas para proteger la invariante del flujo
  * {@code PENDING → PROCESSING → READY/FAILED}. No expone setters de estado sueltos
  * que permitan dejar el agregado en un estado inconsistente.
+ *
+ * <p>El binario original del archivo no es parte de este agregado: es un
+ * detalle de infraestructura gestionado por {@link
+ * com.docucanvas.application.port.out.BlobStoragePort}, independiente del
+ * ciclo de vida de la metadata.
  */
 public class Document {
     private UUID id;
@@ -19,20 +24,18 @@ public class Document {
     private DocumentStatus status;
     private Integer chunkCount;
     private List<String> tags;
-    private byte[] fileContent;
     private Instant createdAt;
     private Instant updatedAt;
 
     public Document() {}
 
-    public Document(UUID id, String title, String sourceType, DocumentStatus status, Integer chunkCount, List<String> tags, byte[] fileContent, Instant createdAt, Instant updatedAt) {
+    public Document(UUID id, String title, String sourceType, DocumentStatus status, Integer chunkCount, List<String> tags, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.title = title;
         this.sourceType = sourceType;
         this.status = status;
         this.chunkCount = chunkCount;
         this.tags = tags;
-        this.fileContent = fileContent;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -62,12 +65,6 @@ public class Document {
         touch();
     }
 
-    /** Adjunta (o reemplaza) el binario original del archivo. */
-    public void attachContent(byte[] content) {
-        this.fileContent = content;
-        touch();
-    }
-
     private void touch() {
         this.updatedAt = Instant.now();
     }
@@ -80,7 +77,6 @@ public class Document {
     public DocumentStatus getStatus() { return status; }
     public Integer getChunkCount() { return chunkCount; }
     public List<String> getTags() { return tags; }
-    public byte[] getFileContent() { return fileContent; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
@@ -91,7 +87,6 @@ public class Document {
         private DocumentStatus status;
         private Integer chunkCount;
         private List<String> tags;
-        private byte[] fileContent;
         private Instant createdAt;
         private Instant updatedAt;
 
@@ -101,12 +96,11 @@ public class Document {
         public DocumentBuilder status(DocumentStatus status) { this.status = status; return this; }
         public DocumentBuilder chunkCount(Integer chunkCount) { this.chunkCount = chunkCount; return this; }
         public DocumentBuilder tags(List<String> tags) { this.tags = tags; return this; }
-        public DocumentBuilder fileContent(byte[] fileContent) { this.fileContent = fileContent; return this; }
         public DocumentBuilder createdAt(Instant createdAt) { this.createdAt = createdAt; return this; }
         public DocumentBuilder updatedAt(Instant updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public Document build() {
-            return new Document(id, title, sourceType, status, chunkCount, tags, fileContent, createdAt, updatedAt);
+            return new Document(id, title, sourceType, status, chunkCount, tags, createdAt, updatedAt);
         }
     }
 }

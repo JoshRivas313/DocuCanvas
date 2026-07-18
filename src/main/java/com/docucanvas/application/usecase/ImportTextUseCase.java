@@ -1,5 +1,6 @@
 package com.docucanvas.application.usecase;
 
+import com.docucanvas.application.port.out.BlobStoragePort;
 import com.docucanvas.application.service.IngestionService;
 import com.docucanvas.domain.exception.UnsupportedFileTypeException;
 import com.docucanvas.domain.model.Document;
@@ -25,11 +26,14 @@ public class ImportTextUseCase {
 
     private final DocumentRepository documentRepository;
     private final IngestionService ingestionService;
+    private final BlobStoragePort blobStoragePort;
 
     public ImportTextUseCase(DocumentRepository documentRepository,
-                             IngestionService ingestionService) {
+                             IngestionService ingestionService,
+                             BlobStoragePort blobStoragePort) {
         this.documentRepository = documentRepository;
         this.ingestionService = ingestionService;
+        this.blobStoragePort = blobStoragePort;
     }
 
     public Document execute(String title, String content, String requestedSourceType) {
@@ -51,8 +55,8 @@ public class ImportTextUseCase {
                 .updatedAt(Instant.now())
                 .build();
 
-        document.attachContent(bytes);
         Document saved = documentRepository.save(document);
+        blobStoragePort.store(saved.getId(), bytes);
 
         ingestionService.processIngestion(saved.getId(), bytes, title);
 

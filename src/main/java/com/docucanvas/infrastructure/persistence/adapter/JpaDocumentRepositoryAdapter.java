@@ -88,7 +88,6 @@ public class JpaDocumentRepositoryAdapter implements DocumentRepository {
                 .status(d.getStatus())
                 .chunkCount(d.getChunkCount())
                 .tags(d.getTags())
-                .fileContent(d.getFileContent())
                 .createdAt(d.getCreatedAt())
                 .updatedAt(d.getUpdatedAt())
                 .build();
@@ -102,7 +101,6 @@ public class JpaDocumentRepositoryAdapter implements DocumentRepository {
                 .status(e.getStatus())
                 .chunkCount(e.getChunkCount())
                 .tags(e.getTags())
-                .fileContent(e.getFileContent())
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())
                 .build();

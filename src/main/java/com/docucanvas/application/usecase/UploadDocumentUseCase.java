@@ -1,5 +1,6 @@
 package com.docucanvas.application.usecase;
 
+import com.docucanvas.application.port.out.BlobStoragePort;
 import com.docucanvas.application.service.IngestionService;
 import com.docucanvas.domain.exception.UnsupportedFileTypeException;
 import com.docucanvas.domain.model.Document;
@@ -17,11 +18,14 @@ public class UploadDocumentUseCase {
 
     private final DocumentRepository documentRepository;
     private final IngestionService ingestionService;
+    private final BlobStoragePort blobStoragePort;
 
     public UploadDocumentUseCase(DocumentRepository documentRepository,
-                                 IngestionService ingestionService) {
+                                 IngestionService ingestionService,
+                                 BlobStoragePort blobStoragePort) {
         this.documentRepository = documentRepository;
         this.ingestionService = ingestionService;
+        this.blobStoragePort = blobStoragePort;
     }
 
     public Document execute(MultipartFile file, String title) {
@@ -42,8 +46,8 @@ public class UploadDocumentUseCase {
                     .updatedAt(Instant.now())
                     .build();
 
-            document.attachContent(content);
             Document saved = documentRepository.save(document);
+            blobStoragePort.store(saved.getId(), content);
 
             // Trigger async processing (reutiliza el mismo array, sin releer el archivo)
             ingestionService.processIngestion(saved.getId(), content, file.getOriginalFilename());
