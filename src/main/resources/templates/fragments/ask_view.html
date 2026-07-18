@@ -2,37 +2,77 @@
 <div th:fragment="ask_view" x-show="view === 'ask'" x-transition x-cloak>
     <div class="flex flex-col h-[75vh] glass rounded-2xl overflow-hidden shadow-2xl relative">
         <!-- Chat Area -->
-        <div class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-900/50 custom-scrollbar" id="chatbox">
+        <div class="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-900/50 custom-scrollbar" id="chatbox">
             <template x-for="msg in chatHistory">
                 <div :class="msg.role === 'user' ? 'justify-end' : 'justify-start'" class="flex">
-                    <div :class="msg.role === 'user' ? 'bg-sky-600 rounded-tr-none' : 'glass rounded-tl-none border-white/5'"
-                        class="max-w-[80%] p-4 rounded-2xl shadow-lg relative group">
-                        
+
+                    <!-- Burbuja simple: mensajes de usuario, o IA sin informe (saludo, errores) -->
+                    <div x-show="msg.role === 'user' || !msg.insights"
+                        :class="msg.role === 'user' ? 'bg-sky-600 rounded-tr-none max-w-[80%]' : 'glass rounded-tl-none border-white/5 max-w-[80%]'"
+                        class="p-4 rounded-2xl shadow-lg">
                         <p class="text-sm leading-relaxed" x-text="msg.content"></p>
-                        
+                    </div>
+
+                    <!-- ═══════════ INFORME RAG (mensajes de IA con insights) ═══════════ -->
+                    <div x-show="msg.role === 'ai' && msg.insights"
+                        class="glass rounded-2xl rounded-tl-none border-white/5 shadow-lg max-w-[92%] w-full overflow-hidden">
+
+                        <!-- 6. Confianza -->
+                        <div class="px-5 py-2.5 flex items-center gap-2 border-b border-white/5"
+                            :class="{ALTA:'bg-emerald-500/10', MEDIA:'bg-amber-500/10', BAJA:'bg-rose-500/10'}[msg.insights?.confidenceLevel]">
+                            <span class="text-sm" x-text="{ALTA:'🟢', MEDIA:'🟡', BAJA:'🔴'}[msg.insights?.confidenceLevel]"></span>
+                            <span class="text-[10px] font-bold uppercase tracking-widest"
+                                :class="{ALTA:'text-emerald-400', MEDIA:'text-amber-400', BAJA:'text-rose-400'}[msg.insights?.confidenceLevel]"
+                                x-text="{ALTA:'Alta confianza', MEDIA:'Confianza media', BAJA:'Baja confianza'}[msg.insights?.confidenceLevel] + ' — ' + Math.round((msg.insights?.confidenceScore || 0) * 100) + '% similitud promedio'"></span>
+                            <span x-show="msg.insights?.partialMatch" x-cloak
+                                class="ml-auto text-[9px] bg-white/10 text-slate-300 px-2 py-0.5 rounded-full font-bold">
+                                Evidencia parcial
+                            </span>
+                        </div>
+
+                        <!-- 1. Resumen ejecutivo -->
+                        <div class="px-6 py-5">
+                            <p class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-2">📋 Resumen Ejecutivo</p>
+                            <p class="text-sm leading-relaxed text-slate-200 whitespace-pre-line" x-text="msg.content"></p>
+                        </div>
+
+                        <!-- 2. Imagen representativa -->
                         <template x-if="msg.imageUrl">
-                            <div class="mt-4 relative group">
+                            <div class="px-6 pb-5">
                                 <img :src="msg.imageUrl"
-                                    class="rounded-xl shadow-2xl max-w-full mx-auto border border-white/10 transition-transform hover:scale-105">
-                                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 pointer-events-none">
-                                     <span class="bg-white/10 backdrop-blur px-2 py-1 rounded text-[10px] font-bold">IA Generated</span>
+                                    class="rounded-xl shadow-2xl w-full border border-white/10">
+                            </div>
+                        </template>
+
+                        <!-- 7. Conceptos principales -->
+                        <template x-if="msg.insights?.keyConcepts?.length">
+                            <div class="px-6 pb-5">
+                                <p class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-2">🔑 Conceptos Principales</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="concept in msg.insights.keyConcepts">
+                                        <span class="text-xs bg-sky-900/40 text-sky-300 border border-sky-500/20 px-3 py-1 rounded-full font-semibold"
+                                            x-text="concept"></span>
+                                    </template>
                                 </div>
                             </div>
                         </template>
 
-                        <template x-if="msg.citations && msg.citations.length > 0">
-                            <div class="mt-3 pt-2 border-t border-white/10">
-                                <p class="text-[10px] uppercase font-bold text-slate-500 mb-1">Evidencia Documental:</p>
-                                <div class="flex flex-wrap gap-2">
-                                    <template x-for="cit in msg.citations">
-                                        <div class="relative group/cit">
-                                            <span class="text-[9px] bg-sky-900/40 text-sky-300 border border-sky-500/20 px-2 py-0.5 rounded cursor-help flex items-center gap-1"
-                                                  x-text="cit.source.substring(0,18) + '...'">
-                                            </span>
-                                            <!-- Tooltip con fragmento real para evitar alucinaciones -->
-                                            <div class="absolute bottom-full left-0 mb-2 w-64 p-3 glass border border-sky-500/30 rounded-xl shadow-2xl opacity-0 group-hover/cit:opacity-100 transition-opacity pointer-events-none z-50 text-[9px] leading-relaxed text-slate-200">
-                                                <p class="italic mb-1" x-text="'&quot;' + cit.content + '&quot;'"></p>
-                                                <div class="text-[8px] text-sky-400 font-black uppercase tracking-widest" x-text="cit.source"></div>
+                        <!-- 8. Relaciones -->
+                        <template x-if="msg.insights?.conceptRelations?.length">
+                            <div class="px-6 pb-5">
+                                <p class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-2">🕸️ Relaciones</p>
+                                <div class="space-y-2">
+                                    <template x-for="rel in msg.insights.conceptRelations">
+                                        <div class="bg-white/5 rounded-lg p-3 border border-white/5">
+                                            <div class="flex items-center gap-2 mb-1.5">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                                                <span class="text-xs font-bold text-indigo-300" x-text="rel.concept"></span>
+                                            </div>
+                                            <div class="pl-3.5 flex flex-wrap gap-1.5">
+                                                <template x-for="topic in rel.relatedTopics">
+                                                    <span class="text-[10px] text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded"
+                                                        x-text="topic"></span>
+                                                </template>
                                             </div>
                                         </div>
                                     </template>
@@ -40,24 +80,65 @@
                             </div>
                         </template>
 
-                        <template x-if="msg.metrics">
-                            <div class="mt-4 flex flex-wrap gap-4 text-[8px] font-bold text-slate-500 border-t border-white/5 pt-2 uppercase tracking-widest">
-                                <div class="flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
-                                    REPRODUCTO RAG: <span class="text-slate-300" x-text="msg.metrics.retrieval + 'ms'"></span>
+                        <!-- 3. Evidencia utilizada -->
+                        <template x-if="msg.citations && msg.citations.length > 0">
+                            <div class="px-6 pb-5">
+                                <p class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-2">📄 Evidencia Utilizada</p>
+                                <div class="space-y-2">
+                                    <template x-for="(cit, idx) in msg.citations" :key="idx">
+                                        <div class="bg-white/5 rounded-lg p-3 border border-white/5">
+                                            <div class="flex items-center justify-between mb-1.5 gap-2">
+                                                <span class="text-xs font-bold text-slate-200 truncate" x-text="cit.source"></span>
+                                                <div class="flex items-center gap-2 flex-shrink-0">
+                                                    <span x-show="cit.page" x-cloak class="text-[9px] text-slate-500 font-mono" x-text="'Pág. ' + cit.page"></span>
+                                                    <span x-show="cit.score != null" x-cloak
+                                                        class="text-[9px] bg-sky-900/40 text-sky-300 px-1.5 py-0.5 rounded font-bold font-mono"
+                                                        x-text="Math.round(cit.score * 100) + '%'"></span>
+                                                </div>
+                                            </div>
+                                            <p class="text-[11px] text-slate-400 italic leading-relaxed line-clamp-3" x-text="'&quot;' + cit.content + '&quot;'"></p>
+                                        </div>
+                                    </template>
                                 </div>
-                                <div class="flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                    LLM GEN: <span class="text-slate-300" x-text="msg.metrics.generation + 'ms'"></span>
-                                </div>
-                                <template x-if="msg.imageUrl">
-                                    <div class="flex items-center gap-1">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                        VISUAL GEN: <span class="text-slate-300" x-text="msg.metrics.visual + 'ms'"></span>
-                                    </div>
-                                </template>
                             </div>
                         </template>
+
+                        <!-- 9. Documentos utilizados -->
+                        <template x-if="msg.insights?.documentsUsed?.length">
+                            <div class="px-6 pb-5">
+                                <p class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-2">📚 Documentos Utilizados</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="doc in msg.insights.documentsUsed">
+                                        <span class="text-xs bg-white/5 border border-white/10 text-slate-300 px-3 py-1 rounded-lg" x-text="'📄 ' + doc"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- 4 + 5. Cómo se encontró + Estadísticas de recuperación -->
+                        <div class="px-6 py-4 bg-slate-900/60 border-t border-white/5">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">⚙️ Cómo se encontró esta información</p>
+                            <p class="text-[11px] text-slate-400 leading-relaxed mb-4" x-text="msg.insights?.howItWasFound"></p>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <div>
+                                    <p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Chunks analizados</p>
+                                    <p class="text-sm font-bold text-slate-200 font-mono" x-text="msg.insights?.totalChunksAnalyzed"></p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Chunks recuperados</p>
+                                    <p class="text-sm font-bold text-slate-200 font-mono" x-text="msg.citations?.length || 0"></p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Retrieval</p>
+                                    <p class="text-sm font-bold text-sky-400 font-mono" x-text="(msg.metrics?.retrieval ?? '—') + ' ms'"></p>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Generación LLM</p>
+                                    <p class="text-sm font-bold text-indigo-400 font-mono" x-text="((msg.metrics?.generation ?? 0) / 1000).toFixed(1) + ' s'"></p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </template>

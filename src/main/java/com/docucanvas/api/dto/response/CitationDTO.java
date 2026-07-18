@@ -6,5 +6,6 @@ package com.docucanvas.api.dto.response;
 public record CitationDTO(
     String source,
     String content,
-    Double score
+    Double score,
+    Integer page
 ) {}

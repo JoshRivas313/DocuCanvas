@@ -14,5 +14,6 @@ public record AnswerResult(
         String imageUrl,
         long retrievalTimeMs,
         long generationTimeMs,
-        long imageTimeMs
+        long imageTimeMs,
+        RetrievalInsights insights
 ) {}

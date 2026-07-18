@@ -10,6 +10,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -47,20 +48,30 @@ public class IngestionService {
             domainDocument.markProcessing();
             documentRepository.save(domainDocument);
 
-            // 1. Extraer Texto con Tika
-            String text = tikaExtractor.extractText(fileContent, originalFilename);
-            log.debug("Texto extraído ({} caracteres)", text.length());
+            // 1. Extraer texto con tracking de página (real para PDF; el resto
+            // de formatos se trata como una única "página").
+            List<String> pages = tikaExtractor.extractPages(
+                    fileContent, originalFilename, domainDocument.getSourceType());
+            log.debug("Extraídas {} página(s)", pages.size());
 
-            // 2. Chunking Inteligente con Spring AI
-            List<Document> springAiDocs = tokenTextSplitter.apply(List.of(new Document(text)));
+            // 2. Chunking por página: cada chunk conserva la página de origen
+            // en su metadata, necesaria para citar la evidencia con precisión
+            // en el pipeline RAG.
+            List<Document> springAiDocs = new ArrayList<>();
+            int chunkIndex = 0;
+            for (int pageIdx = 0; pageIdx < pages.size(); pageIdx++) {
+                String pageText = pages.get(pageIdx);
+                if (pageText.isBlank()) continue;
 
-            // Enriquecer con Metadatos (Pilar del RAG)
-            for (int i = 0; i < springAiDocs.size(); i++) {
-                Document doc = springAiDocs.get(i);
-                doc.getMetadata().putAll(Map.of(
-                        "documentId", documentId.toString(),
-                        "chunkIndex", i,
-                        "source", originalFilename));
+                List<Document> pageChunks = tokenTextSplitter.apply(List.of(new Document(pageText)));
+                for (Document chunk : pageChunks) {
+                    chunk.getMetadata().putAll(Map.of(
+                            "documentId", documentId.toString(),
+                            "chunkIndex", chunkIndex++,
+                            "source", originalFilename,
+                            "page", pageIdx + 1));
+                    springAiDocs.add(chunk);
+                }
             }
             log.debug("Dividido en {} chunks inteligentes", springAiDocs.size());
 
@@ -68,7 +79,7 @@ public class IngestionService {
             // Spring AI se encarga de llamar al EmbeddingModel configurado en YAML
             vectorStore.add(springAiDocs);
 
-            // 5. Completar Proceso
+            // 4. Completar Proceso
             domainDocument.markReady(springAiDocs.size());
             documentRepository.save(domainDocument);
 

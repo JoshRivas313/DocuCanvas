@@ -17,4 +17,10 @@ public interface ChunkReadPort {
 
     /** Chunks de un documento concreto, ordenados por índice de chunk. */
     List<RawChunk> findByDocument(String documentId);
+
+    /** Total de chunks indexados en todo el sistema. */
+    int countAll();
+
+    /** Total de chunks indexados para un documento concreto. */
+    int countByDocument(String documentId);
 }

@@ -99,6 +99,13 @@
 			<artifactId>tika-parsers-standard-package</artifactId>
 			<version>3.0.0</version>
 		</dependency>
+		<!-- Ya llega transitivamente vía tika-parsers, pero se declara explícita
+		     porque se usa su API directamente (extracción de texto por página). -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>3.0.3</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.apache.commons</groupId>

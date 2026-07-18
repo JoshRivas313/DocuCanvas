@@ -73,6 +73,22 @@ public class PgVectorChunkAdapter implements ChunkReadPort, ChunkWritePort {
     }
 
     @Override
+    public int countAll() {
+        return jdbcClient.sql("SELECT count(*) FROM document_chunks")
+                .query(Integer.class)
+                .single();
+    }
+
+    @Override
+    public int countByDocument(String documentId) {
+        return jdbcClient
+                .sql("SELECT count(*) FROM document_chunks WHERE metadata->>'documentId' = :documentId")
+                .param("documentId", documentId)
+                .query(Integer.class)
+                .single();
+    }
+
+    @Override
     public void deleteByDocument(UUID documentId) {
         int deleted = jdbcClient
                 .sql("DELETE FROM document_chunks WHERE metadata->>'documentId' = :documentId")

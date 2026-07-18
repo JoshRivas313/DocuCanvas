@@ -167,6 +167,7 @@ function createDocApp() {
                     content: data.answer,
                     citations: data.citations,
                     imageUrl: data.imageUrl,
+                    insights: data.insights,
                     metrics: {
                         retrieval: data.retrievalTimeMs,
                         generation: data.generationTimeMs,
