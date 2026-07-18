@@ -21,9 +21,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Orquesta la vista de chunks: lectura (puerto) → reducción PCA (puerto) →
@@ -42,6 +39,8 @@ public class ChunkService {
     private static final int MIN_CLUSTERS = 2;
     private static final int CHUNKS_PER_CLUSTER = 5;
     private static final int DEFAULT_SEARCH_TOP_K = 5;
+    /** Coordenadas neutras para vistas que no proyectan a 3D (p.ej. Indexación). */
+    private static final List<Double> NO_PROJECTION = List.of(0.0, 0.0, 0.0);
 
     private final ChunkReadPort chunkReadPort;
     private final DimensionalityReductionPort dimensionalityReduction;
@@ -86,14 +85,35 @@ public class ChunkService {
     }
 
     /**
-     * Recupera todos los chunks asociados a un documento con su proyección PCA.
+     * Recupera los chunks de un documento para la Vista de Indexación (lista
+     * de texto plano, ordenada por posición original en el documento).
+     *
+     * <p><b>Deliberadamente sin PCA ni clustering ni nombrado por LLM:</b> el
+     * único consumidor de este método es la Vista de Indexación
+     * ({@code indexing_view.html}), que solo muestra {@code id} y
+     * {@code content} por chunk — nunca coordenadas 3D ni metadata de
+     * cluster. Ejecutar el pipeline pesado aquí era trabajo desperdiciado:
+     * en un documento de 157 chunks, el pipeline (PCA + KMeans + hasta 10
+     * llamadas al LLM para nombrar clusters) tardaba ~81s para una vista que
+     * ni siquiera renderiza esos datos. Este método pasa a ser una simple
+     * lectura, sin más costo que la consulta SQL.
+     *
+     * <p>La proyección 3D con clustering semántico completo vive en
+     * {@link #getChunksForVisualization()}, el único camino que la Vista de
+     * Embeddings usa de verdad.
      */
     @Cacheable(value = "chunksDoc", key = "#documentId", sync = true)
     public List<ChunkView> getChunksByDocumentId(String documentId) {
-        log.info("Generando vista de indexación para documento: {} (CACHE MISS)", documentId);
-        List<RawChunk> rawData = chunkReadPort.findByDocument(documentId);
-        if (rawData.isEmpty()) return List.of();
-        return processAndCluster(rawData);
+        log.info("Generando vista de indexación (lectura ligera) para documento: {} (CACHE MISS)", documentId);
+        return chunkReadPort.findByDocument(documentId).stream()
+                .map(raw -> new ChunkView(
+                        raw.id(),
+                        truncateContent(raw.content()),
+                        raw.content(),
+                        NO_PROJECTION,
+                        raw.documentName() != null ? raw.documentName() : "Desconocido",
+                        "", "", ClusterPalette.colorFor(0)))
+                .toList();
     }
 
     private List<ChunkView> processAndCluster(List<RawChunk> rawData) {
@@ -112,7 +132,9 @@ public class ChunkService {
                     .add(rawData.get(i).content());
         }
 
-        Map<Integer, ClusterName> clusterNames = nameClustersInParallel(k, clusterContents);
+        // Nombrado por lote: una sola llamada al LLM para los k clusters
+        // (ver javadoc de ClusterNamingPort para la justificación).
+        Map<Integer, ClusterName> clusterNames = clusterNaming.nameAll(clusterContents);
 
         // 4. Ensamblar la vista
         List<ChunkView> result = new ArrayList<>(rawData.size());
@@ -132,28 +154,6 @@ public class ChunkService {
                     ClusterPalette.colorFor(clusterIdx)));
         }
         return result;
-    }
-
-    /**
-     * Nombra los k clusters en paralelo (cada nombrado es una llamada al LLM,
-     * I/O-bound). Con virtual threads la latencia total pasa de {@code k·t} a ~{@code t}.
-     */
-    private Map<Integer, ClusterName> nameClustersInParallel(int k, Map<Integer, List<String>> clusterContents) {
-        Map<Integer, ClusterName> names = new HashMap<>();
-        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            List<CompletableFuture<Map.Entry<Integer, ClusterName>>> futures = new ArrayList<>(k);
-            for (int i = 0; i < k; i++) {
-                final int idx = i;
-                futures.add(CompletableFuture.supplyAsync(
-                        () -> Map.entry(idx, clusterNaming.name(idx, clusterContents.getOrDefault(idx, List.of()))),
-                        executor));
-            }
-            for (CompletableFuture<Map.Entry<Integer, ClusterName>> f : futures) {
-                Map.Entry<Integer, ClusterName> entry = f.join();
-                names.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return names;
     }
 
     /**
