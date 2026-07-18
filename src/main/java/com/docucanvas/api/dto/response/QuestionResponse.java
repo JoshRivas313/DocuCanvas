@@ -10,5 +10,6 @@ public record QuestionResponse(
     String imageUrl,
     long retrievalTimeMs,
     long generationTimeMs,
-    long imageTimeMs
+    long imageTimeMs,
+    RetrievalInsightsDTO insights
 ) {}
