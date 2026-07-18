@@ -61,25 +61,18 @@ public class JpaDocumentEntity {
         return new JpaDocumentEntityBuilder();
     }
 
-    // Getters and Setters
+    // Solo getters: Hibernate usa acceso por campo (el @Id está en el campo, no
+    // en un getter) y ningún código de la aplicación mutaba esta entidad tras
+    // construirla — toda escritura pasa por el builder o el constructor.
     public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
     public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
     public String getSourceType() { return sourceType; }
-    public void setSourceType(String sourceType) { this.sourceType = sourceType; }
     public DocumentStatus getStatus() { return status; }
-    public void setStatus(DocumentStatus status) { this.status = status; }
     public Integer getChunkCount() { return chunkCount; }
-    public void setChunkCount(Integer chunkCount) { this.chunkCount = chunkCount; }
     public List<String> getTags() { return tags; }
-    public void setTags(List<String> tags) { this.tags = tags; }
     public byte[] getFileContent() { return fileContent; }
-    public void setFileContent(byte[] fileContent) { this.fileContent = fileContent; }
     public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     @PrePersist
     protected void onCreate() {

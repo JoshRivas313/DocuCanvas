@@ -10,14 +10,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class UploadDocumentUseCase {
-
-    /** Tipos de archivo admitidos para ingesta (extensión en mayúsculas). */
-    private static final Set<String> ALLOWED_TYPES = Set.of("PDF", "DOCX", "DOC", "TXT", "TEXT", "MD");
 
     private final DocumentRepository documentRepository;
     private final IngestionService ingestionService;
@@ -32,7 +28,7 @@ public class UploadDocumentUseCase {
         try {
             byte[] content = file.getBytes();
             String sourceType = getFileExtension(file.getOriginalFilename());
-            if (!ALLOWED_TYPES.contains(sourceType)) {
+            if (!AllowedFileTypes.isAllowed(sourceType)) {
                 throw new UnsupportedFileTypeException(sourceType);
             }
             Document document = Document.builder()

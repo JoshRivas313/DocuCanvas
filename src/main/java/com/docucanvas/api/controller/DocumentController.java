@@ -4,16 +4,16 @@ import com.docucanvas.api.dto.request.TextImportRequest;
 import com.docucanvas.api.dto.response.AcceptedJobResponse;
 import com.docucanvas.api.dto.response.IngestionJobResponse;
 import com.docucanvas.application.service.IngestionService;
+import com.docucanvas.application.usecase.ImportTextUseCase;
 import com.docucanvas.application.usecase.UploadDocumentUseCase;
 import com.docucanvas.domain.model.Document;
-import com.docucanvas.domain.model.DocumentStatus;
 import com.docucanvas.domain.model.DocumentSummary;
 import com.docucanvas.domain.repository.DocumentRepository;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,13 +22,16 @@ import java.util.UUID;
 public class DocumentController {
 
     private final UploadDocumentUseCase uploadDocumentUseCase;
+    private final ImportTextUseCase importTextUseCase;
     private final DocumentRepository documentRepository;
     private final IngestionService ingestionService;
 
-    public DocumentController(UploadDocumentUseCase uploadDocumentUseCase, 
-                              DocumentRepository documentRepository, 
+    public DocumentController(UploadDocumentUseCase uploadDocumentUseCase,
+                              ImportTextUseCase importTextUseCase,
+                              DocumentRepository documentRepository,
                               IngestionService ingestionService) {
         this.uploadDocumentUseCase = uploadDocumentUseCase;
+        this.importTextUseCase = importTextUseCase;
         this.documentRepository = documentRepository;
         this.ingestionService = ingestionService;
     }
@@ -39,23 +42,15 @@ public class DocumentController {
     }
 
     @PostMapping("/documents/import-text")
-    public ResponseEntity<Document> importText(@RequestBody TextImportRequest request) {
-        Document doc = Document.builder()
-                .id(UUID.randomUUID())
-                .title(request.title())
-                .sourceType(request.sourceType() != null ? request.sourceType() : "TEXT")
-                .status(DocumentStatus.PENDING)
-                .chunkCount(0)
-                .tags(List.of())
-                .fileContent(request.content().getBytes())
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .build();
-        
-        Document saved = documentRepository.save(doc);
-        ingestionService.processIngestion(saved.getId(), request.content().getBytes(), "text.txt");
-        
-        return ResponseEntity.ok(saved);
+    public ResponseEntity<DocumentSummary> importText(@Valid @RequestBody TextImportRequest request) {
+        Document saved = importTextUseCase.execute(request.title(), request.content(), request.sourceType());
+        return ResponseEntity.ok(toSummary(saved));
+    }
+
+    private DocumentSummary toSummary(Document d) {
+        return new DocumentSummary(
+                d.getId(), d.getTitle(), d.getSourceType(), d.getStatus(),
+                d.getChunkCount(), d.getTags(), d.getCreatedAt(), d.getUpdatedAt());
     }
 
     @PostMapping("/documents/upload")

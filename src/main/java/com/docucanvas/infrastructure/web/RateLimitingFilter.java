@@ -1,5 +1,7 @@
 package com.docucanvas.infrastructure.web;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,9 +13,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Map;
+import java.time.Duration;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Rate limiting por IP para los endpoints computacionalmente costosos (invocan
@@ -39,13 +40,18 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final int capacity;
     private final long windowMillis;
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    // expireAfterAccess evita que una IP inactiva ocupe memoria indefinidamente
+    // (el ConcurrentHashMap original nunca purgaba entradas).
+    private final Cache<String, Bucket> buckets;
 
     public RateLimitingFilter(
             @Value("${docucanvas.ratelimit.capacity:20}") int capacity,
             @Value("${docucanvas.ratelimit.window-seconds:60}") long windowSeconds) {
         this.capacity = capacity;
         this.windowMillis = windowSeconds * 1000L;
+        this.buckets = Caffeine.newBuilder()
+                .expireAfterAccess(Duration.ofSeconds(windowSeconds * 2))
+                .build();
     }
 
     @Override
@@ -59,7 +65,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String key = request.getRemoteAddr();
-        Bucket bucket = buckets.computeIfAbsent(key, k -> new Bucket(capacity, windowMillis));
+        Bucket bucket = buckets.get(key, k -> new Bucket(capacity, windowMillis));
 
         if (bucket.tryConsume()) {
             chain.doFilter(request, response);

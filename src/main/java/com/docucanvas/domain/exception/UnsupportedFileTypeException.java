@@ -6,6 +6,7 @@ public class UnsupportedFileTypeException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
     public UnsupportedFileTypeException(String sourceType) {
-        super("Tipo de archivo no soportado: " + sourceType);
+        super(
+                "Tipo de archivo no soportado: " + sourceType);
     }
 }

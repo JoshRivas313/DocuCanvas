@@ -52,7 +52,7 @@ public class QuestionService {
     private static final long AI_TASK_TIMEOUT_SECONDS = 60;
     private static final int  DEFAULT_MAX_CHUNKS       = 5;
 
-    private final ChatClient.Builder     chatClientBuilder;
+    private final ChatClient             chatClient;
     private final VectorStore            vectorStore;
     private final ImageGenerationService imageGenerationService;
     // Ejecutor sobre virtual threads: no fija un techo artificial de concurrencia
@@ -62,7 +62,8 @@ public class QuestionService {
     public QuestionService(ChatClient.Builder chatClientBuilder,
                            VectorStore vectorStore,
                            ImageGenerationService imageGenerationService) {
-        this.chatClientBuilder      = chatClientBuilder;
+        // Construido una sola vez: evita reconstruir el cliente en cada pregunta.
+        this.chatClient             = chatClientBuilder.defaultSystem(SYSTEM_PROMPT).build();
         this.vectorStore            = vectorStore;
         this.imageGenerationService = imageGenerationService;
     }
@@ -122,20 +123,16 @@ public class QuestionService {
         // ── 3. Lanzar LLM + SVG EN PARALELO ──────────────────────────────
 
         // Tarea A: Generación de respuesta textual (Ollama LLM)
-        CompletableFuture<String> answerFuture = CompletableFuture.supplyAsync(() -> {
-            ChatClient chatClient = chatClientBuilder
-                    .defaultSystem(SYSTEM_PROMPT)
-                    .build();
-
-            return chatClient.prompt()
+        CompletableFuture<String> answerFuture = CompletableFuture.supplyAsync(() ->
+            chatClient.prompt()
                     .user(u -> u.text("Contexto:\n{context}\n\nPregunta: {question}")
                             .param("context", context.isEmpty()
                                     ? "No se encontró contexto relevante en los documentos."
                                     : context)
                             .param("question", request.question()))
                     .call()
-                    .content();
-        }, aiExecutor);
+                    .content(),
+            aiExecutor);
 
         // Tarea B: Generación de infografía SVG local (sin API externa, sin GPU)
         CompletableFuture<String> imageFuture = CompletableFuture.supplyAsync(() -> {
