@@ -111,13 +111,13 @@ public class QuestionService {
         List<Citation> citations = docs.stream()
                 .map(d -> new Citation(
                         (String) d.getMetadata().getOrDefault("source", "Documento"),
-                        d.getContent(),
+                        d.getText(),
                         similarityScore(d)))
                 .toList();
 
         // ── 2. Preparar contexto compartido ──────────────────────────────
         String context = docs.stream()
-                .map(org.springframework.ai.document.Document::getContent)
+                .map(org.springframework.ai.document.Document::getText)
                 .collect(Collectors.joining("\n\n"));
 
         // ── 3. Lanzar LLM + SVG EN PARALELO ──────────────────────────────
