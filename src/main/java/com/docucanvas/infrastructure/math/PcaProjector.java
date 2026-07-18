@@ -20,8 +20,13 @@ public class PcaProjector implements DimensionalityReductionPort {
 
     @Override
     public double[][] projectTo3D(double[][] data) {
-        if (data == null || data.length < TARGET_DIMENSIONS) {
-            log.warn("Datos insuficientes para PCA, devolviendo ceros");
+        // SVD funciona desde n=2 (proyección de rango 1 sobre el eje X). Solo con
+        // 0-1 puntos no hay varianza que proyectar: el origen es la única opción.
+        // (El guard anterior era n<3 y colapsaba 2 chunks al origen, impidiendo
+        // que KMeans los separara en la visualización.)
+        if (data == null || data.length < 2) {
+            log.warn("Datos insuficientes para PCA ({} puntos), devolviendo origen",
+                    data != null ? data.length : 0);
             return new double[data != null ? data.length : 0][TARGET_DIMENSIONS];
         }
 
