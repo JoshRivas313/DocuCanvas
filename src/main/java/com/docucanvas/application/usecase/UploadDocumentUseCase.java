@@ -1,6 +1,7 @@
 package com.docucanvas.application.usecase;
 
 import com.docucanvas.application.port.out.BlobStoragePort;
+import com.docucanvas.application.port.out.FileTypeDetectorPort;
 import com.docucanvas.application.service.IngestionService;
 import com.docucanvas.domain.exception.UnsupportedFileTypeException;
 import com.docucanvas.domain.model.Document;
@@ -16,25 +17,44 @@ import java.util.UUID;
 @Service
 public class UploadDocumentUseCase {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(UploadDocumentUseCase.class);
+
     private final DocumentRepository documentRepository;
     private final IngestionService ingestionService;
     private final BlobStoragePort blobStoragePort;
+    private final FileTypeDetectorPort fileTypeDetector;
 
     public UploadDocumentUseCase(DocumentRepository documentRepository,
                                  IngestionService ingestionService,
-                                 BlobStoragePort blobStoragePort) {
+                                 BlobStoragePort blobStoragePort,
+                                 FileTypeDetectorPort fileTypeDetector) {
         this.documentRepository = documentRepository;
         this.ingestionService = ingestionService;
         this.blobStoragePort = blobStoragePort;
+        this.fileTypeDetector = fileTypeDetector;
     }
 
     public Document execute(MultipartFile file, String title) {
         try {
             byte[] content = file.getBytes();
             String sourceType = getFileExtension(file.getOriginalFilename());
+
+            // 1. La extensión declarada debe estar en la política de tipos.
             if (!AllowedFileTypes.isAllowed(sourceType)) {
                 throw new UnsupportedFileTypeException(sourceType);
             }
+
+            // 2. Y el contenido real debe corresponderse con ella. El nombre lo
+            // controla el cliente; los magic bytes, no. Sin este paso, un
+            // ejecutable renombrado a .pdf llegaba intacto a PDFBox.
+            String detected = fileTypeDetector.detectMediaType(content, file.getOriginalFilename());
+            if (!AllowedFileTypes.matchesDetectedType(sourceType, detected)) {
+                log.warn("Subida rechazada: '{}' declara .{} pero su contenido es {}",
+                        file.getOriginalFilename(), sourceType.toLowerCase(), detected);
+                throw UnsupportedFileTypeException.contentMismatch(sourceType, detected);
+            }
+
             Document document = Document.builder()
                     .id(UUID.randomUUID())
                     .title(title != null ? title : file.getOriginalFilename())
