@@ -2,6 +2,7 @@ package com.docucanvas.application.service;
 
 import com.docucanvas.domain.exception.DocumentNotFoundException;
 import com.docucanvas.domain.repository.DocumentRepository;
+import com.docucanvas.infrastructure.config.RagProperties;
 import com.docucanvas.infrastructure.storage.TikaExtractor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
@@ -26,12 +27,23 @@ public class IngestionService {
 
     public IngestionService(DocumentRepository documentRepository,
             TikaExtractor tikaExtractor,
-            VectorStore vectorStore) {
+            VectorStore vectorStore,
+            RagProperties ragProperties) {
         this.documentRepository = documentRepository;
         this.tikaExtractor = tikaExtractor;
         this.vectorStore = vectorStore;
-        // Chunking optimizado para demostración visual y ahorro de costos en el LLM
-        this.tokenTextSplitter = new TokenTextSplitter(200, 50, 5, 10000, true);
+        // Parámetros de chunking externalizados a docucanvas.rag.chunking (ver
+        // RagProperties.Chunking para el porqué de cada uno). Los defaults
+        // reproducen exactamente los valores que antes estaban incrustados aquí.
+        RagProperties.Chunking chunking = ragProperties.chunking();
+        this.tokenTextSplitter = new TokenTextSplitter(
+                chunking.chunkSize(),
+                chunking.minChunkSizeChars(),
+                chunking.minChunkLengthToEmbed(),
+                chunking.maxNumChunks(),
+                chunking.keepSeparator());
+        log.info("Chunking configurado: chunkSize={} tokens, minChunkSizeChars={}, maxNumChunks={}",
+                chunking.chunkSize(), chunking.minChunkSizeChars(), chunking.maxNumChunks());
     }
 
     @Async
