@@ -39,8 +39,14 @@ services:
     environment:
       - OLLAMA_KEEP_ALIVE=24h
       - OLLAMA_NUM_PARALLEL=2
+    # El healthcheck usa el propio CLI de ollama, no curl: la imagen
+    # ollama/ollama no incluye curl, asi que "curl -sf ..." fallaba siempre con
+    # "curl: not found". El contenedor quedaba marcado unhealthy de forma
+    # permanente y, como ollama-init depende de service_healthy, los modelos no
+    # se descargaban NUNCA: en una maquina limpia el arranque en 3 pasos del
+    # README fallaba en silencio.
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      test: ["CMD-SHELL", "ollama list > /dev/null 2>&1 || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 8

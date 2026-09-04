@@ -88,6 +88,21 @@ alucinaciones que ancla el texto, aplicada a la segunda modalidad.
   `content` ≤ 1.000.000. El rate limiting acota la frecuencia de las peticiones, no
   el tamaño de cada una.
 
+### Un bug encontrado al levantar el entorno
+
+El healthcheck de Ollama en `docker-compose.yml` usaba
+`curl -sf http://localhost:11434/api/tags`, pero **la imagen `ollama/ollama` no
+incluye `curl`**: el chequeo fallaba siempre con `curl: not found`. El contenedor
+quedaba marcado `unhealthy` de forma permanente aunque su API funcionara, y como
+`ollama-init` depende de `service_healthy`, **los modelos no se descargaban nunca**.
+
+En una máquina limpia, el arranque en 3 pasos del README fallaba en silencio: el
+contenedor arriba, la API respondiendo, y ningún modelo cargado. Es exactamente el
+tipo de fallo que aparece al preparar una demo en una máquina prestada.
+
+Corregido usando el CLI propio de la imagen (`ollama list`). Verificado: el
+contenedor pasa a `healthy` en ~20s y `ollama-init` descarga los modelos.
+
 ### Un bug encontrado por los tests
 
 `SpringAiImageModelAdapter` se registró primero con
@@ -186,9 +201,40 @@ usar la abstracción del framework**, que es una conversación más interesante 
 | Contexto de Spring sin base de datos | ✅ `ApplicationWiringTest` |
 | Credenciales en el repositorio | ✅ ninguna |
 
-Pendiente de probar de extremo a extremo con un modelo real levantado (subir un
-documento → preguntar → ver la imagen), lo que requiere Ollama con `llama3.2` y
-`nomic-embed-text` descargados. El riesgo concreto a validar ahí es si un modelo
-de 3B produce JSON válido con la frecuencia suficiente; el camino de degradación a
-texto plano ya está cubierto por tests unitarios, así que un fallo de formato no
-rompe la respuesta, solo prescinde del prompt visual y las relaciones.
+### Prueba de extremo a extremo con modelos reales
+
+Ejecutada contra Ollama (`llama3.2` + `nomic-embed-text`) y PGVector: ingesta de
+un documento → embeddings → búsqueda semántica → generación estructurada → render
+visual.
+
+**La salida estructurada funciona con un modelo de 3B: 4 de 4 consultas
+devolvieron JSON válido.** Era el riesgo principal del diseño. Ejemplo real:
+
+```
+answer:       "El servicio de conciliacion consume eventos de transacciones de la
+               cola de mensajes Kafka y contrasta cada movimiento con el extracto
+               del banco cada 24 horas..."
+visualPrompt: "A service consuming events from a Kafka message queue and comparing
+               each transaction with the bank statement every 24 hours, generating
+               an alert if a discrepancy is detected."
+relations:    [{"concept":"Servicio de conciliacion",
+                "relatedTopics":["cola de mensajes","eventos de transacciones",
+                                 "extracto del banco"]}]
+imageSource:  LOCAL_SVG_FALLBACK      (sin -Pimagegen no hay proveedor de imagen)
+confianza:    ALTA (0.671)
+```
+
+El `visualPrompt` describe únicamente entidades presentes en el documento —Kafka,
+extracto bancario, ciclo de 24 h, alerta— y no introduce elementos inventados: la
+cadena multimodal hace lo que promete.
+
+**Dos observaciones para la charla:**
+
+1. **Latencia.** La generación tardó entre 28 y 80 segundos por consulta
+   (llama3.2 en CPU). El timeout dinámico calculó bien y ninguna consulta expiró,
+   pero 80 segundos de silencio en un escenario son inviables. Es el argumento
+   más fuerte para usar Gemini en la demo, o para tener respuestas pre-cacheadas.
+2. **El modelo no siempre sigue la regla 7** del system prompt (pedir
+   explícitamente que la imagen no contenga texto). Solo importa cuando hay un
+   proveedor de imagen real conectado; conviene reforzarlo en el propio adaptador
+   añadiendo el sufijo al prompt antes de llamar al `ImageModel`.
