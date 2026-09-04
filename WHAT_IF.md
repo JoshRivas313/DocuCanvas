@@ -180,10 +180,15 @@ usar la abstracción del framework**, que es una conversación más interesante 
 | :--- | :--- |
 | Compilación por defecto | ✅ |
 | Compilación con `-Pgemini,imagegen` | ✅ |
-| Tests | ✅ 72/73 (base: 52/53) |
-| Contexto de Spring | ✅ verificado por `ApplicationWiringTest` |
+| Tests | ✅ **73/73** (la rama base tenía 53) |
+| Integración con PGVector real (Testcontainers) | ✅ `DocuCanvasApplicationTests` |
+| Arranque de la aplicación | ✅ Flyway valida 8 migraciones, Tomcat en 8080, `Started DocuCanvasApplication in 29.9s` |
+| Contexto de Spring sin base de datos | ✅ `ApplicationWiringTest` |
 | Credenciales en el repositorio | ✅ ninguna |
 
-El único test que falla es `DocuCanvasApplicationTests`, que necesita Docker para
-Testcontainers; falla igual en la rama base cuando Docker no está corriendo. No se
-pudo ejecutar el arranque completo contra PostgreSQL por el mismo motivo.
+Pendiente de probar de extremo a extremo con un modelo real levantado (subir un
+documento → preguntar → ver la imagen), lo que requiere Ollama con `llama3.2` y
+`nomic-embed-text` descargados. El riesgo concreto a validar ahí es si un modelo
+de 3B produce JSON válido con la frecuencia suficiente; el camino de degradación a
+texto plano ya está cubierto por tests unitarios, así que un fallo de formato no
+rompe la respuesta, solo prescinde del prompt visual y las relaciones.
