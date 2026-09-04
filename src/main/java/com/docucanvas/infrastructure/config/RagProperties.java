@@ -22,7 +22,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record RagProperties(
         @DefaultValue Chunking chunking,
         @DefaultValue Retrieval retrieval,
-        @DefaultValue Generation generation) {
+        @DefaultValue Generation generation,
+        @DefaultValue Visual visual) {
 
     /**
      * Parámetros de troceado del documento.
@@ -97,4 +98,18 @@ public record RagProperties(
             @DefaultValue("15") long timeoutMarginSeconds,
             @DefaultValue("30") long minTimeoutSeconds,
             @DefaultValue("150") long maxTimeoutSeconds) {}
+
+    /**
+     * Parámetros del render visual.
+     *
+     * <p>Solo aplican cuando hay un proveedor de generación de imágenes
+     * configurado; el respaldo SVG local tiene sus propias dimensiones fijas
+     * porque las calcula el propio generador.
+     *
+     * @param width  ancho solicitado al modelo de imagen
+     * @param height alto solicitado al modelo de imagen
+     */
+    public record Visual(
+            @DefaultValue("1024") int width,
+            @DefaultValue("1024") int height) {}
 }

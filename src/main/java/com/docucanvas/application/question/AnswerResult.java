@@ -12,6 +12,10 @@ import java.util.List;
  * puede leer la interpretación que el modelo hizo del documento antes de ver
  * cómo la dibuja.
  *
+ * @param imageSource  qué mecanismo produjo realmente la imagen
+ *                     ({@code GENERATIVE_IMAGE_MODEL}, {@code LOCAL_SVG_FALLBACK}
+ *                     o {@code NONE}); el sistema declara su propio camino en vez
+ *                     de dejar que se asuma
  * @param visualPrompt prompt visual derivado por el LLM del contexto recuperado;
  *                     {@code null} si el modelo no produjo salida estructurada
  */
@@ -21,6 +25,7 @@ public record AnswerResult(
         List<Citation> citations,
         int chunkCount,
         String imageUrl,
+        String imageSource,
         String visualPrompt,
         long retrievalTimeMs,
         long generationTimeMs,

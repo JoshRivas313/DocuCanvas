@@ -7,6 +7,8 @@ import com.docucanvas.application.question.ConfidenceLevel;
 import com.docucanvas.application.rag.RagPromptFactory;
 import com.docucanvas.application.rag.RagRetriever;
 import com.docucanvas.application.rag.StructuredInsightGenerator;
+import com.docucanvas.application.visual.VisualRenderingService;
+import com.docucanvas.application.visual.VisualSource;
 import com.docucanvas.infrastructure.config.RagProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +44,7 @@ import static org.mockito.Mockito.*;
 class QuestionServiceTest {
 
     @Mock private VectorStore vectorStore;
-    @Mock private ImageGenerationService imageGenerationService;
+    @Mock private com.docucanvas.application.port.out.DiagramRenderPort diagramRenderPort;
     @Mock private ChunkReadPort chunkReadPort;
     @Mock private ChatClient.Builder chatClientBuilder;
     @Mock private ChatClient chatClient;
@@ -56,7 +58,8 @@ class QuestionServiceTest {
         return new RagProperties(
                 new RagProperties.Chunking(200, 50, 5, 10000, true),
                 new RagProperties.Retrieval(5, 20, 0.3, 0.0),
-                new RagProperties.Generation(400, 3.7, 25.0, 5.0, 15, 30, 150));
+                new RagProperties.Generation(400, 3.7, 25.0, 5.0, 15, 30, 150),
+                new RagProperties.Visual(1024, 1024));
     }
 
     private QuestionService questionService;
@@ -72,7 +75,8 @@ class QuestionServiceTest {
                 new RagRetriever(vectorStore, ragProperties),
                 new RagPromptFactory(),
                 new StructuredInsightGenerator(),
-                imageGenerationService, conceptExtractor, chunkReadPort,
+                new VisualRenderingService(java.util.Optional.empty(), diagramRenderPort),
+                conceptExtractor, chunkReadPort,
                 ragProperties,
                 "llama3.2", 0.7);
 
@@ -100,7 +104,7 @@ class QuestionServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("Spring AI facilita RAG con PGVector.", "doc-1", 0.42)));
         stubChatResponse("Spring AI facilita la integración de RAG con PGVector.");
-        when(imageGenerationService.generateImageDataUrl(any(), any()))
+        when(diagramRenderPort.renderDiagram(any(), any()))
                 .thenReturn("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=");
 
         AnswerResult response = questionService.answer(
@@ -109,7 +113,7 @@ class QuestionServiceTest {
         assertThat(response.answer()).contains("Spring AI");
         assertThat(response.imageUrl()).startsWith("data:image/svg+xml;base64,");
         assertThat(response.citations()).isNotEmpty();
-        verify(imageGenerationService, times(1)).generateImageDataUrl(any(), any());
+        verify(diagramRenderPort, times(1)).renderDiagram(any(), any());
     }
 
     @Test
@@ -119,7 +123,7 @@ class QuestionServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contexto test", documentId.toString(), 0.4)));
         stubChatResponse("Respuesta filtrada por documento.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("data:image/svg+xml;base64,AAAA");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("data:image/svg+xml;base64,AAAA");
 
         AnswerResult response = questionService.answer(
                 new AnswerQuestionCommand("¿Qué dice el documento?", 3, documentId));
@@ -136,7 +140,7 @@ class QuestionServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contexto fallo image", "doc-error", 0.45)));
         stubChatResponse("Respuesta de emergencia.");
-        when(imageGenerationService.generateImageDataUrl(any(), any()))
+        when(diagramRenderPort.renderDiagram(any(), any()))
                 .thenThrow(new RuntimeException("Fallo generando SVG"));
 
         AnswerResult response = questionService.answer(
@@ -157,7 +161,7 @@ class QuestionServiceTest {
         assertThat(response.answer()).containsIgnoringCase("no hay documentos indexados");
         assertThat(response.citations()).isEmpty();
         assertThat(response.insights().totalChunksAnalyzed()).isZero();
-        verifyNoInteractions(vectorStore, imageGenerationService);
+        verifyNoInteractions(vectorStore, diagramRenderPort);
         verify(chatClient, never()).prompt();
     }
 
@@ -176,7 +180,7 @@ class QuestionServiceTest {
                   ]
                 }
                 """);
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(
                 new AnswerQuestionCommand("¿Cómo son los gatos?", 5, null));
@@ -196,7 +200,7 @@ class QuestionServiceTest {
                 docWithScore("contexto", "doc-1", 0.4)));
         // Un modelo pequeño en local ignora el formato con frecuencia: es el caso normal, no el raro.
         stubChatResponse("Una respuesta normal, en prosa, sin nada de JSON.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(
                 new AnswerQuestionCommand("pregunta", 5, null));
@@ -216,7 +220,7 @@ class QuestionServiceTest {
                 {"answer": "Respuesta envuelta.", "visualPrompt": "vector diagram, no text", "relations": []}
                 ```
                 """);
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(
                 new AnswerQuestionCommand("pregunta", 5, null));
@@ -232,7 +236,7 @@ class QuestionServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contexto relevante", "doc-1", 0.35)));
         stubChatResponse("Respuesta con alta confianza.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(new AnswerQuestionCommand("pregunta", 5, null));
 
@@ -247,7 +251,7 @@ class QuestionServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contexto tangencial", "doc-1", 0.75)));
         stubChatResponse("La documentación contiene información relacionada, aunque no responde de forma explícita la pregunta.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(new AnswerQuestionCommand("pregunta", 5, null));
 
@@ -262,7 +266,7 @@ class QuestionServiceTest {
                 "contenido", Map.of("source", "doc.pdf", "distance", 0.4, "page", 7));
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(doc));
         stubChatResponse("Respuesta.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(new AnswerQuestionCommand("pregunta", 5, null));
 
@@ -275,7 +279,7 @@ class QuestionServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contenido de un TXT", "doc.txt", 0.4)));
         stubChatResponse("Respuesta.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(new AnswerQuestionCommand("pregunta", 5, null));
 
@@ -288,7 +292,7 @@ class QuestionServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contexto", "doc-1", 0.4)));
         stubChatResponse("Respuesta.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         questionService.answer(new AnswerQuestionCommand("pregunta", 5, null));
 
@@ -303,7 +307,7 @@ class QuestionServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contexto", "doc-1", 0.4)));
         stubChatResponse("Respuesta.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         questionService.answer(new AnswerQuestionCommand("pregunta", 5, null));
 
@@ -322,7 +326,7 @@ class QuestionServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contexto", "doc-1", 0.4)));
         stubChatResponse("Respuesta.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         questionService.answer(new AnswerQuestionCommand("pregunta", 5000, null));
 
@@ -339,7 +343,7 @@ class QuestionServiceTest {
                 .thenReturn(List.of())
                 .thenReturn(List.of(docWithScore("contexto tangencial", "doc-1", 0.8)));
         stubChatResponse("Respuesta con evidencia débil.");
-        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+        when(diagramRenderPort.renderDiagram(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(
                 new AnswerQuestionCommand("¿De qué trata todo esto?", 5, null));

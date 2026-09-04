@@ -12,6 +12,9 @@ import com.docucanvas.application.rag.RagPromptFactory;
 import com.docucanvas.application.rag.RagRetriever;
 import com.docucanvas.application.rag.RetrievalResult;
 import com.docucanvas.application.rag.StructuredInsightGenerator;
+import com.docucanvas.application.visual.VisualRendering;
+import com.docucanvas.application.visual.VisualRenderingService;
+import com.docucanvas.application.visual.VisualSource;
 import com.docucanvas.infrastructure.config.RagProperties;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.ChatOptions;
@@ -65,7 +68,7 @@ public class QuestionService {
     private final RagRetriever ragRetriever;
     private final RagPromptFactory promptFactory;
     private final StructuredInsightGenerator insightGenerator;
-    private final ImageGenerationService imageGenerationService;
+    private final VisualRenderingService visualRenderingService;
     private final ConceptExtractor conceptExtractor;
     private final ChunkReadPort chunkReadPort;
     private final RagProperties.Generation generationConfig;
@@ -80,7 +83,7 @@ public class QuestionService {
                            RagRetriever ragRetriever,
                            RagPromptFactory promptFactory,
                            StructuredInsightGenerator insightGenerator,
-                           ImageGenerationService imageGenerationService,
+                           VisualRenderingService visualRenderingService,
                            ConceptExtractor conceptExtractor,
                            ChunkReadPort chunkReadPort,
                            RagProperties ragProperties,
@@ -90,7 +93,7 @@ public class QuestionService {
         this.chatClient = chatClientBuilder.defaultSystem(promptFactory.systemPrompt()).build();
         this.ragRetriever = ragRetriever;
         this.insightGenerator = insightGenerator;
-        this.imageGenerationService = imageGenerationService;
+        this.visualRenderingService = visualRenderingService;
         this.conceptExtractor = conceptExtractor;
         this.chunkReadPort = chunkReadPort;
         this.generationConfig = ragProperties.generation();
@@ -135,8 +138,9 @@ public class QuestionService {
         RagInsight insight = generateInsight(userPrompt, timeoutSeconds, promptTokens);
         long generationEnd = System.currentTimeMillis();
 
-        // ── 4. Render visual ──────────────────────────────────────────────
-        String imageUrl = generateImageSafely(request.question(), context);
+        // ── 4. Render visual, anclado a lo que el modelo entendió ─────────
+        VisualRendering visual = visualRenderingService.render(
+                insight.visualPrompt(), request.question(), context);
         long imageEnd = System.currentTimeMillis();
 
         // ── 5. Ensamblado ─────────────────────────────────────────────────
@@ -149,7 +153,8 @@ public class QuestionService {
                 insight.answer(),
                 citations,
                 retrieval.documents().size(),
-                imageUrl,
+                visual.url(),
+                visual.source().name(),
                 insight.visualPrompt(),
                 (retrievalEnd - start),
                 (generationEnd - retrievalEnd),
@@ -200,23 +205,6 @@ public class QuestionService {
                 .build();
     }
 
-    /**
-     * Genera la representación visual del contexto.
-     *
-     * <p>Deja de correr en paralelo a la generación de texto: ahora que el modelo
-     * produce {@code visualPrompt}, el render visual pasa a depender del
-     * resultado de la generación en vez de competir con ella. El consumo efectivo
-     * de ese prompt llega con el puerto de render visual.
-     */
-    private String generateImageSafely(String question, String context) {
-        try {
-            return imageGenerationService.generateImageDataUrl(question, context);
-        } catch (Exception e) {
-            log.error("Error generando la representación visual: ", e);
-            return "";
-        }
-    }
-
     // ─────────────────────────────────────────────────────────────────────
     // Ensamblado de la respuesta
     // ─────────────────────────────────────────────────────────────────────
@@ -227,7 +215,7 @@ public class QuestionService {
                 request.question(),
                 "No hay documentos indexados" + (documentFilter != null ? " para este filtro" : " en el sistema")
                         + " con los que responder esta pregunta.",
-                List.of(), 0, "", null, (now - start), 0, 0,
+                List.of(), 0, "", VisualSource.NONE.name(), null, (now - start), 0, 0,
                 new RetrievalInsights(ConfidenceLevel.BAJA, 0.0, List.of(), List.of(), List.of(),
                         0, "No se ejecutó búsqueda semántica: no hay chunks indexados en el alcance solicitado.",
                         false));
