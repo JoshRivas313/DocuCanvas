@@ -6,6 +6,7 @@ import com.docucanvas.application.question.AnswerResult;
 import com.docucanvas.application.question.ConfidenceLevel;
 import com.docucanvas.application.rag.RagPromptFactory;
 import com.docucanvas.application.rag.RagRetriever;
+import com.docucanvas.application.rag.StructuredInsightGenerator;
 import com.docucanvas.infrastructure.config.RagProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -70,6 +71,7 @@ class QuestionServiceTest {
                 chatClientBuilder,
                 new RagRetriever(vectorStore, ragProperties),
                 new RagPromptFactory(),
+                new StructuredInsightGenerator(),
                 imageGenerationService, conceptExtractor, chunkReadPort,
                 ragProperties,
                 "llama3.2", 0.7);
@@ -160,25 +162,27 @@ class QuestionServiceTest {
     }
 
     @Test
-    @DisplayName("El bloque [RELACIONES] se separa del texto visible y se parsea en insights.conceptRelations")
-    void parseaElBloqueDeRelacionesYLoSeparaDeLaRespuesta() {
+    @DisplayName("La salida estructurada aporta respuesta, prompt visual y relaciones en una sola llamada")
+    void salidaEstructuradaAportaRespuestaPromptVisualYRelaciones() {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("Los gatos son felinos domésticos muy independientes", "doc-1", 0.4)));
         stubChatResponse("""
-                Los gatos son animales domésticos independientes.
-
-                [RELACIONES]
-                Felinos: comportamiento, domesticación
-                Independientes: autonomía, carácter
+                {
+                  "answer": "Los gatos son animales domésticos independientes.",
+                  "visualPrompt": "clean vector infographic of domestic feline behaviour, no text",
+                  "relations": [
+                    {"concept": "Felinos", "relatedTopics": ["comportamiento", "domesticación"]},
+                    {"concept": "Independientes", "relatedTopics": ["autonomía", "carácter"]}
+                  ]
+                }
                 """);
         when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(
                 new AnswerQuestionCommand("¿Cómo son los gatos?", 5, null));
 
-        assertThat(response.answer())
-                .isEqualTo("Los gatos son animales domésticos independientes.")
-                .doesNotContain("[RELACIONES]");
+        assertThat(response.answer()).isEqualTo("Los gatos son animales domésticos independientes.");
+        assertThat(response.visualPrompt()).contains("no text");
         assertThat(response.insights().conceptRelations()).hasSize(2);
         assertThat(response.insights().conceptRelations().get(0).concept()).isEqualTo("Felinos");
         assertThat(response.insights().conceptRelations().get(0).relatedTopics())
@@ -186,18 +190,39 @@ class QuestionServiceTest {
     }
 
     @Test
-    @DisplayName("Si el LLM no sigue el formato de relaciones, la respuesta principal no falla y relations queda vacío")
-    void formatoDeRelacionesInvalidoNoRompeLaRespuesta() {
+    @DisplayName("Si el modelo no devuelve JSON válido, se conserva su texto como respuesta en vez de fallar")
+    void jsonInvalidoDegradaATextoPlanoSinFallar() {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contexto", "doc-1", 0.4)));
-        stubChatResponse("Una respuesta normal sin bloque de relaciones al final.");
+        // Un modelo pequeño en local ignora el formato con frecuencia: es el caso normal, no el raro.
+        stubChatResponse("Una respuesta normal, en prosa, sin nada de JSON.");
         when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
 
         AnswerResult response = questionService.answer(
                 new AnswerQuestionCommand("pregunta", 5, null));
 
-        assertThat(response.answer()).isEqualTo("Una respuesta normal sin bloque de relaciones al final.");
+        assertThat(response.answer()).isEqualTo("Una respuesta normal, en prosa, sin nada de JSON.");
+        assertThat(response.visualPrompt()).isNull();
         assertThat(response.insights().conceptRelations()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("El JSON envuelto en vallas de bloque de código se parsea igualmente")
+    void jsonEnvueltoEnVallasDeCodigoSeParsea() {
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
+                docWithScore("contexto", "doc-1", 0.4)));
+        stubChatResponse("""
+                ```json
+                {"answer": "Respuesta envuelta.", "visualPrompt": "vector diagram, no text", "relations": []}
+                ```
+                """);
+        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+
+        AnswerResult response = questionService.answer(
+                new AnswerQuestionCommand("pregunta", 5, null));
+
+        assertThat(response.answer()).isEqualTo("Respuesta envuelta.");
+        assertThat(response.visualPrompt()).isEqualTo("vector diagram, no text");
     }
 
     @Test

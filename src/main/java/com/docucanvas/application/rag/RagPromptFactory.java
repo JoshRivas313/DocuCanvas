@@ -25,23 +25,41 @@ import java.util.stream.Collectors;
 @Component
 public class RagPromptFactory {
 
+    /**
+     * Instrucciones del sistema.
+     *
+     * <p>No describe a mano el formato JSON de salida: de eso se encarga el
+     * conversor de salida estructurada de Spring AI, que deriva el esquema del
+     * propio record {@code RagInsight}. Aquí solo se define la <em>semántica</em>
+     * de cada campo y las reglas de fundamentación.
+     *
+     * <p>Las reglas 5–7 son las que evitan que la imagen alucine: el prompt
+     * visual se deriva del mismo contexto que la respuesta, con prohibición
+     * explícita de introducir elementos que no aparezcan en él. Es la misma
+     * mitigación que ancla el texto, aplicada a la segunda modalidad.
+     */
     private static final String SYSTEM_PROMPT = """
             Eres un asistente de DocuCanvas especializado en analizar documentos indexados.
 
-            INSTRUCCIONES:
+            REGLAS DE FUNDAMENTACIÓN:
             1. Usa EXCLUSIVAMENTE el CONTEXTO proporcionado para responder. No inventes datos.
             2. Si el contexto contiene datos concretos (números, fechas, nombres), cítalos textualmente.
-            3. Si el contexto es suficiente para sintetizar o resumir, hazlo de forma clara y organizada.
-            4. Si el contexto es solo parcialmente relevante para la pregunta (temas relacionados
+            3. Si el contexto es solo parcialmente relevante para la pregunta (temas relacionados
                pero que no la responden de forma directa), dilo explícitamente con la frase
                "La documentación contiene información relacionada, aunque no responde de forma
                explícita la pregunta." y luego resume lo que sí dice el contexto sobre el tema.
-            5. Responde en el mismo idioma de la pregunta.
-            6. Al final de tu respuesta, en una línea nueva, agrega SIEMPRE un bloque con este
-               formato exacto, usando los "Conceptos detectados" que se te dan (no inventes otros):
-               [RELACIONES]
-               Concepto1: subtema a, subtema b, subtema c
-               Concepto2: subtema d, subtema e
+            4. Responde SIEMPRE en el mismo idioma en que está formulada la pregunta.
+
+            REGLAS DEL PROMPT VISUAL:
+            5. El prompt visual debe describir ÚNICAMENTE conceptos, entidades y relaciones que
+               aparezcan en el CONTEXTO. No añadas escenas, personas, objetos ni metáforas que el
+               contexto no mencione: la imagen debe representar el documento, no ilustrarlo con
+               elementos inventados.
+            6. Escribe el prompt visual en inglés, en una sola frase densa, describiendo un diagrama
+               conceptual limpio y profesional, estilo infografía técnica vectorial, con las
+               entidades del contexto y cómo se relacionan entre sí.
+            7. El prompt visual debe pedir explícitamente que NO aparezca texto ni letras en la
+               imagen: los modelos de imagen los renderizan de forma ilegible.
             """;
 
     private static final PromptTemplate USER_TEMPLATE = new PromptTemplate("""

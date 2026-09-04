@@ -47,6 +47,7 @@ public class QuestionController {
                 citations,
                 result.chunkCount(),
                 result.imageUrl(),
+                result.visualPrompt(),
                 result.retrievalTimeMs(),
                 result.generationTimeMs(),
                 result.imageTimeMs(),

@@ -6,10 +6,12 @@ import com.docucanvas.application.question.AnswerResult;
 import com.docucanvas.application.question.Citation;
 import com.docucanvas.application.question.ConceptRelation;
 import com.docucanvas.application.question.ConfidenceLevel;
+import com.docucanvas.application.question.RagInsight;
 import com.docucanvas.application.question.RetrievalInsights;
 import com.docucanvas.application.rag.RagPromptFactory;
 import com.docucanvas.application.rag.RagRetriever;
 import com.docucanvas.application.rag.RetrievalResult;
+import com.docucanvas.application.rag.StructuredInsightGenerator;
 import com.docucanvas.infrastructure.config.RagProperties;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.ChatOptions;
@@ -18,18 +20,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Orquesta el pipeline RAG: recuperación → construcción de contexto → generación
@@ -64,15 +61,10 @@ public class QuestionService {
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(QuestionService.class);
 
-    private static final Pattern RELATIONS_BLOCK = Pattern.compile(
-            "\\[RELACIONES]\\s*(.*)", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
-    private static final Pattern RELATION_LINE = Pattern.compile("^(.+?):\\s*(.+)$");
-    private static final Pattern RELATIONS_MARKER = Pattern.compile(
-            "\\[RELACIONES]", Pattern.CASE_INSENSITIVE);
-
     private final ChatClient chatClient;
     private final RagRetriever ragRetriever;
     private final RagPromptFactory promptFactory;
+    private final StructuredInsightGenerator insightGenerator;
     private final ImageGenerationService imageGenerationService;
     private final ConceptExtractor conceptExtractor;
     private final ChunkReadPort chunkReadPort;
@@ -87,6 +79,7 @@ public class QuestionService {
     public QuestionService(ChatClient.Builder chatClientBuilder,
                            RagRetriever ragRetriever,
                            RagPromptFactory promptFactory,
+                           StructuredInsightGenerator insightGenerator,
                            ImageGenerationService imageGenerationService,
                            ConceptExtractor conceptExtractor,
                            ChunkReadPort chunkReadPort,
@@ -96,6 +89,7 @@ public class QuestionService {
         this.promptFactory = promptFactory;
         this.chatClient = chatClientBuilder.defaultSystem(promptFactory.systemPrompt()).build();
         this.ragRetriever = ragRetriever;
+        this.insightGenerator = insightGenerator;
         this.imageGenerationService = imageGenerationService;
         this.conceptExtractor = conceptExtractor;
         this.chunkReadPort = chunkReadPort;
@@ -137,67 +131,61 @@ public class QuestionService {
         log.info("Prompt RAG: ~{} tokens estimados ({} chunks) -> timeout dinámico {}s",
                 promptTokens, retrieval.documents().size(), timeoutSeconds);
 
-        // ── 3. Generación de texto e infografía ───────────────────────────
-        CompletableFuture<String> textFuture = CompletableFuture.supplyAsync(
-                () -> generateText(userPrompt), aiExecutor);
-        CompletableFuture<String> imageFuture = CompletableFuture.supplyAsync(
-                () -> generateImageSafely(request.question(), context), aiExecutor);
-
-        String rawResponse;
-        String imageUrl;
-        try {
-            rawResponse = textFuture.get(timeoutSeconds, TimeUnit.SECONDS);
-            imageUrl = imageFuture.get(timeoutSeconds, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            log.error("Timeout ({}s, prompt ~{} tokens) esperando al modelo de IA",
-                    timeoutSeconds, promptTokens, e);
-            textFuture.cancel(true);
-            imageFuture.cancel(true);
-            rawResponse = "El modelo de IA tardó demasiado en responder. Inténtalo de nuevo.";
-            imageUrl = "";
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("Interrumpido esperando al modelo de IA", e);
-            rawResponse = "La generación fue interrumpida.";
-            imageUrl = "";
-        } catch (Exception e) {
-            log.error("Error esperando tareas paralelas: ", e);
-            rawResponse = "Error al procesar la pregunta.";
-            imageUrl = "";
-        }
-
+        // ── 3. Generación estructurada: texto + prompt visual en una llamada ──
+        RagInsight insight = generateInsight(userPrompt, timeoutSeconds, promptTokens);
         long generationEnd = System.currentTimeMillis();
 
-        // ── 4. Ensamblado ─────────────────────────────────────────────────
-        String answer = extractAnswer(rawResponse);
-        List<ConceptRelation> relations = parseRelations(rawResponse, keyConcepts);
+        // ── 4. Render visual ──────────────────────────────────────────────
+        String imageUrl = generateImageSafely(request.question(), context);
+        long imageEnd = System.currentTimeMillis();
 
+        // ── 5. Ensamblado ─────────────────────────────────────────────────
         RetrievalInsights insights = buildInsights(
-                citations, keyConcepts, relations, totalChunksAnalyzed, documentFilter, retrieval);
+                citations, keyConcepts, insight.relationsOrEmpty(),
+                totalChunksAnalyzed, documentFilter, retrieval);
 
         return new AnswerResult(
                 request.question(),
-                answer,
+                insight.answer(),
                 citations,
                 retrieval.documents().size(),
                 imageUrl,
+                insight.visualPrompt(),
                 (retrievalEnd - start),
                 (generationEnd - retrievalEnd),
-                0, // la imagen se generó en paralelo, no suma al tiempo secuencial
+                (imageEnd - generationEnd),
                 insights);
+    }
+
+    /**
+     * Ejecuta la generación con el timeout dinámico. Se mantiene el future porque
+     * el timeout debe poder cortar una llamada colgada al modelo, no solo
+     * esperarla: sin él, una petición podría quedarse bloqueada indefinidamente
+     * ocupando un hilo de la petición HTTP.
+     */
+    private RagInsight generateInsight(String userPrompt, long timeoutSeconds, long promptTokens) {
+        CompletableFuture<RagInsight> future = CompletableFuture.supplyAsync(
+                () -> insightGenerator.generate(chatClient, userPrompt, chatOptions()), aiExecutor);
+        try {
+            return future.get(timeoutSeconds, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.error("Timeout ({}s, prompt ~{} tokens) esperando al modelo de IA",
+                    timeoutSeconds, promptTokens, e);
+            future.cancel(true);
+            return RagInsight.textOnly("El modelo de IA tardó demasiado en responder. Inténtalo de nuevo.");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Interrumpido esperando al modelo de IA", e);
+            return RagInsight.textOnly("La generación fue interrumpida.");
+        } catch (Exception e) {
+            log.error("Error generando la respuesta: ", e);
+            return RagInsight.textOnly("Error al procesar la pregunta.");
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────
     // Generación
     // ─────────────────────────────────────────────────────────────────────
-
-    private String generateText(String userPrompt) {
-        return chatClient.prompt()
-                .options(chatOptions())
-                .user(userPrompt)
-                .call()
-                .content();
-    }
 
     /**
      * Opciones portables: {@code maxTokens} es el equivalente neutral de
@@ -212,11 +200,19 @@ public class QuestionService {
                 .build();
     }
 
+    /**
+     * Genera la representación visual del contexto.
+     *
+     * <p>Deja de correr en paralelo a la generación de texto: ahora que el modelo
+     * produce {@code visualPrompt}, el render visual pasa a depender del
+     * resultado de la generación en vez de competir con ella. El consumo efectivo
+     * de ese prompt llega con el puerto de render visual.
+     */
     private String generateImageSafely(String question, String context) {
         try {
             return imageGenerationService.generateImageDataUrl(question, context);
         } catch (Exception e) {
-            log.error("Error generando infografía SVG: ", e);
+            log.error("Error generando la representación visual: ", e);
             return "";
         }
     }
@@ -231,7 +227,7 @@ public class QuestionService {
                 request.question(),
                 "No hay documentos indexados" + (documentFilter != null ? " para este filtro" : " en el sistema")
                         + " con los que responder esta pregunta.",
-                List.of(), 0, "", (now - start), 0, 0,
+                List.of(), 0, "", null, (now - start), 0, 0,
                 new RetrievalInsights(ConfidenceLevel.BAJA, 0.0, List.of(), List.of(), List.of(),
                         0, "No se ejecutó búsqueda semántica: no hay chunks indexados en el alcance solicitado.",
                         false));
@@ -329,47 +325,6 @@ public class QuestionService {
         long total = Math.round(prefillSeconds + generationSeconds) + generationConfig.timeoutMarginSeconds();
         return Math.min(generationConfig.maxTimeoutSeconds(),
                 Math.max(generationConfig.minTimeoutSeconds(), total));
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Parseo del bloque [RELACIONES]
-    // ─────────────────────────────────────────────────────────────────────
-
-    /** Corta la respuesta del modelo justo antes del bloque [RELACIONES], si existe. */
-    private String extractAnswer(String rawResponse) {
-        if (rawResponse == null) return "";
-        Matcher marker = RELATIONS_MARKER.matcher(rawResponse);
-        String answer = marker.find() ? rawResponse.substring(0, marker.start()) : rawResponse;
-        return answer.trim();
-    }
-
-    /**
-     * Parsea el bloque {@code [RELACIONES]} del final de la respuesta. Si el
-     * modelo no siguió el formato, devuelve una lista vacía en vez de fallar la
-     * respuesta principal — el bloque es un adjunto informativo, no crítico.
-     */
-    private List<ConceptRelation> parseRelations(String rawResponse, List<String> keyConcepts) {
-        if (rawResponse == null || keyConcepts.isEmpty()) return List.of();
-        Matcher blockMatcher = RELATIONS_BLOCK.matcher(rawResponse);
-        if (!blockMatcher.find()) return List.of();
-
-        Map<String, ConceptRelation> byConcept = new LinkedHashMap<>();
-        for (String line : blockMatcher.group(1).split("\\r?\\n")) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty()) continue;
-            Matcher lineMatcher = RELATION_LINE.matcher(trimmed);
-            if (!lineMatcher.matches()) continue;
-            String concept = lineMatcher.group(1).trim();
-            List<String> related = new ArrayList<>();
-            for (String topic : lineMatcher.group(2).split(",")) {
-                String t = topic.trim();
-                if (!t.isEmpty()) related.add(t);
-            }
-            if (!related.isEmpty()) {
-                byConcept.put(concept, new ConceptRelation(concept, related));
-            }
-        }
-        return List.copyOf(byConcept.values());
     }
 
     @PreDestroy
