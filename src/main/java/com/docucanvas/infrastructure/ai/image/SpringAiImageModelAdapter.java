@@ -9,7 +9,7 @@ import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImageOptionsBuilder;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -18,13 +18,21 @@ import java.util.Optional;
  * Adaptador sobre {@link ImageModel} de Spring AI: genera una imagen real a
  * partir del prompt visual que el LLM derivó del contexto documental.
  *
- * <p><b>Por qué es condicional:</b> {@code ImageModel} es una interfaz del núcleo
- * de Spring AI, siempre presente en el classpath, pero solo existe un bean que
- * la implemente si se añade un starter de proveedor (OpenAI, Stability AI,
- * Azure…). La anotación {@link ConditionalOnBean} hace que este adaptador
- * aparezca únicamente en ese caso; sin proveedor configurado, el
- * {@code Optional<GenerativeImagePort>} del servicio llega vacío y el pipeline
- * cae al diagrama local sin que nada falle al arrancar.
+ * <p><b>Por qué {@link ObjectProvider} y no {@code @ConditionalOnBean}:</b> la
+ * condición parece la herramienta natural — "regístrate solo si hay un
+ * proveedor de imágenes" — pero {@code @ConditionalOnBean} solo es fiable en
+ * clases de autoconfiguración. Las condiciones se evalúan en el orden en que se
+ * registran las definiciones de bean, y un {@code @Component} escaneado se
+ * registra <em>antes</em> que las autoconfiguraciones que aportan el
+ * {@code ImageModel}: en el momento de evaluar la condición, el bean del
+ * proveedor todavía no existe, así que el adaptador no se registraría nunca —
+ * ni siquiera con el starter presente. Es un fallo silencioso: la aplicación
+ * arranca perfectamente y degrada siempre al SVG, dando la impresión de que el
+ * proveedor no funciona.
+ *
+ * <p>{@code ObjectProvider} resuelve la dependencia de forma perezosa, en el
+ * momento de usarla, cuando el contexto ya está completo. El adaptador existe
+ * siempre y declara su disponibilidad real.
  *
  * <p>El código no menciona ningún proveedor concreto. Cambiar de DALL·E a
  * Stability AI, o a Imagen cuando Spring AI lo soporte, es cambiar una
@@ -32,22 +40,31 @@ import java.util.Optional;
  * {@code ChatOptions} cumple para el texto.
  */
 @Component
-@ConditionalOnBean(ImageModel.class)
 public class SpringAiImageModelAdapter implements GenerativeImagePort {
 
     private static final Logger log = LoggerFactory.getLogger(SpringAiImageModelAdapter.class);
 
-    private final ImageModel imageModel;
+    private final ObjectProvider<ImageModel> imageModelProvider;
     private final RagProperties.Visual config;
 
-    public SpringAiImageModelAdapter(ImageModel imageModel, RagProperties ragProperties) {
-        this.imageModel = imageModel;
+    public SpringAiImageModelAdapter(ObjectProvider<ImageModel> imageModelProvider,
+                                     RagProperties ragProperties) {
+        this.imageModelProvider = imageModelProvider;
         this.config = ragProperties.visual();
-        log.info("Generación de imágenes por IA ACTIVA vía {}", providerName());
+    }
+
+    @Override
+    public boolean isAvailable() {
+        return imageModelProvider.getIfAvailable() != null;
     }
 
     @Override
     public Optional<String> generate(String visualPrompt) {
+        ImageModel imageModel = imageModelProvider.getIfAvailable();
+        if (imageModel == null) {
+            return Optional.empty();
+        }
+
         log.info("Generando imagen con IA para el prompt visual: {}", visualPrompt);
 
         ImagePrompt prompt = new ImagePrompt(visualPrompt,
@@ -81,6 +98,7 @@ public class SpringAiImageModelAdapter implements GenerativeImagePort {
 
     @Override
     public String providerName() {
-        return imageModel.getClass().getSimpleName();
+        ImageModel imageModel = imageModelProvider.getIfAvailable();
+        return imageModel != null ? imageModel.getClass().getSimpleName() : "ninguno";
     }
 }

@@ -32,8 +32,9 @@ class VisualRenderingServiceTest {
     @Test
     @DisplayName("Con proveedor disponible y prompt visual, genera la imagen con IA")
     void conProveedorYPromptGeneraConIa() {
+        when(generativeImage.isAvailable()).thenReturn(true);
         when(generativeImage.generate(PROMPT)).thenReturn(Optional.of("https://cdn.example/img.png"));
-        VisualRenderingService service = new VisualRenderingService(Optional.of(generativeImage), diagramRender);
+        VisualRenderingService service = new VisualRenderingService(generativeImage, diagramRender);
 
         VisualRendering result = service.render(PROMPT, "¿Qué arquitectura describe?", "contexto");
 
@@ -46,7 +47,7 @@ class VisualRenderingServiceTest {
     @DisplayName("Sin proveedor configurado usa el diagrama local y lo declara como respaldo")
     void sinProveedorUsaDiagramaLocal() {
         when(diagramRender.renderDiagram(anyString(), anyString())).thenReturn(SVG);
-        VisualRenderingService service = new VisualRenderingService(Optional.empty(), diagramRender);
+        VisualRenderingService service = new VisualRenderingService(new NoGenerativeImageProvider(), diagramRender);
 
         VisualRendering result = service.render(PROMPT, "pregunta", "contexto");
 
@@ -57,10 +58,11 @@ class VisualRenderingServiceTest {
     @Test
     @DisplayName("Si el proveedor de IA falla, la respuesta no se pierde: cae al diagrama local")
     void falloDelProveedorDegradaAlDiagramaLocal() {
+        when(generativeImage.isAvailable()).thenReturn(true);
         when(generativeImage.generate(anyString()))
                 .thenThrow(new RuntimeException("429 Too Many Requests"));
         when(diagramRender.renderDiagram(anyString(), anyString())).thenReturn(SVG);
-        VisualRenderingService service = new VisualRenderingService(Optional.of(generativeImage), diagramRender);
+        VisualRenderingService service = new VisualRenderingService(generativeImage, diagramRender);
 
         VisualRendering result = service.render(PROMPT, "pregunta", "contexto");
 
@@ -71,9 +73,10 @@ class VisualRenderingServiceTest {
     @Test
     @DisplayName("Si el proveedor responde vacío también se degrada, sin devolver una imagen en blanco")
     void respuestaVaciaDelProveedorDegrada() {
+        when(generativeImage.isAvailable()).thenReturn(true);
         when(generativeImage.generate(anyString())).thenReturn(Optional.empty());
         when(diagramRender.renderDiagram(anyString(), anyString())).thenReturn(SVG);
-        VisualRenderingService service = new VisualRenderingService(Optional.of(generativeImage), diagramRender);
+        VisualRenderingService service = new VisualRenderingService(generativeImage, diagramRender);
 
         VisualRendering result = service.render(PROMPT, "pregunta", "contexto");
 
@@ -84,23 +87,23 @@ class VisualRenderingServiceTest {
     @DisplayName("Sin prompt visual no se llama al proveedor de pago: se va directo al respaldo")
     void sinPromptVisualNoLlamaAlProveedor() {
         when(diagramRender.renderDiagram(anyString(), anyString())).thenReturn(SVG);
-        VisualRenderingService service = new VisualRenderingService(Optional.of(generativeImage), diagramRender);
+        VisualRenderingService service = new VisualRenderingService(generativeImage, diagramRender);
 
         VisualRendering result = service.render(null, "pregunta", "contexto");
 
         assertThat(result.source()).isEqualTo(VisualSource.LOCAL_SVG_FALLBACK);
         // Sin prompt no hay nada que generar: gastar una llamada sería tirar dinero.
-        // (El constructor sí consulta providerName() para la traza de arranque.)
         verify(generativeImage, never()).generate(anyString());
     }
 
     @Test
     @DisplayName("Si fallan los dos caminos devuelve NONE en vez de romper la respuesta")
     void falloTotalDevuelveNone() {
+        when(generativeImage.isAvailable()).thenReturn(true);
         when(generativeImage.generate(anyString())).thenThrow(new RuntimeException("sin cuota"));
         when(diagramRender.renderDiagram(anyString(), anyString()))
                 .thenThrow(new RuntimeException("fallo de render"));
-        VisualRenderingService service = new VisualRenderingService(Optional.of(generativeImage), diagramRender);
+        VisualRenderingService service = new VisualRenderingService(generativeImage, diagramRender);
 
         VisualRendering result = service.render(PROMPT, "pregunta", "contexto");
 

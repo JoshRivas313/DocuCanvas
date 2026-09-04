@@ -35,16 +35,13 @@ public class VisualRenderingService {
 
     private static final Logger log = LoggerFactory.getLogger(VisualRenderingService.class);
 
-    private final Optional<GenerativeImagePort> generativeImage;
+    private final GenerativeImagePort generativeImage;
     private final DiagramRenderPort diagramRender;
 
-    public VisualRenderingService(Optional<GenerativeImagePort> generativeImage,
+    public VisualRenderingService(GenerativeImagePort generativeImage,
                                   DiagramRenderPort diagramRender) {
         this.generativeImage = generativeImage;
         this.diagramRender = diagramRender;
-        log.info("Render visual: generación por IA {}; respaldo local SVG activo",
-                generativeImage.map(p -> "disponible (" + p.providerName() + ")")
-                        .orElse("no configurada"));
     }
 
     /**
@@ -54,9 +51,9 @@ public class VisualRenderingService {
      * @param context      contexto recuperado, para el respaldo local
      */
     public VisualRendering render(String visualPrompt, String question, String context) {
-        if (generativeImage.isPresent() && visualPrompt != null && !visualPrompt.isBlank()) {
+        if (visualPrompt != null && !visualPrompt.isBlank() && generativeImage.isAvailable()) {
             try {
-                Optional<String> url = generativeImage.get().generate(visualPrompt);
+                Optional<String> url = generativeImage.generate(visualPrompt);
                 if (url.isPresent()) {
                     return VisualRendering.generated(url.get());
                 }

@@ -75,7 +75,7 @@ class QuestionServiceTest {
                 new RagRetriever(vectorStore, ragProperties),
                 new RagPromptFactory(),
                 new StructuredInsightGenerator(),
-                new VisualRenderingService(java.util.Optional.empty(), diagramRenderPort),
+                new VisualRenderingService(new com.docucanvas.application.visual.NoGenerativeImageProvider(), diagramRenderPort),
                 conceptExtractor, chunkReadPort,
                 ragProperties);
 
