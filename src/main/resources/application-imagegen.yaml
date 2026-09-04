@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Perfil imagegen: activa la generación real de imágenes vía ImageModel.
+#
+# Requiere compilar con el perfil Maven que aporta el starter:
+#   ./mvnw spring-boot:run -Pimagegen -Dspring-boot.run.profiles=dev,imagegen
+#
+# NO se incluye ninguna credencial en el repositorio. Antes de usarlo:
+#
+#   OPENAI_API_KEY   clave del proveedor de imágenes
+#
+# Sin este perfil, SpringAiImageModelAdapter no se registra (no hay bean
+# ImageModel) y VisualRenderingService cae al diagrama SVG local. La aplicación
+# funciona igual: la diferencia se ve en el campo imageSource de la respuesta.
+#
+# Combinable con el perfil gemini:
+#   ./mvnw spring-boot:run -Pgemini,imagegen -Dspring-boot.run.profiles=dev,gemini,imagegen
+# ─────────────────────────────────────────────────────────────────────────────
+spring:
+  ai:
+    model:
+      image: openai         # activa OpenAiImageModel como bean ImageModel
+      # El chat y los embeddings siguen donde estaban: este perfil solo añade
+      # la modalidad de imagen, no toca el resto del pipeline.
+      chat: ollama
+      embedding: ollama
+
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      image:
+        options:
+          model: ${IMAGE_MODEL:dall-e-3}
+          # b64_json evita depender de una URL temporal del proveedor que
+          # caduca: la imagen llega inline y el navegador la pinta directa.
+          response-format: b64_json
+
+docucanvas:
+  rag:
+    visual:
+      width: 1024
+      height: 1024

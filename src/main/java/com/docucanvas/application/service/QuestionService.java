@@ -72,8 +72,6 @@ public class QuestionService {
     private final ConceptExtractor conceptExtractor;
     private final ChunkReadPort chunkReadPort;
     private final RagProperties.Generation generationConfig;
-    private final String chatModel;
-    private final double temperature;
 
     // Ejecutor sobre virtual threads: no fija un techo artificial de concurrencia
     // y se cierra ordenadamente en @PreDestroy.
@@ -86,9 +84,7 @@ public class QuestionService {
                            VisualRenderingService visualRenderingService,
                            ConceptExtractor conceptExtractor,
                            ChunkReadPort chunkReadPort,
-                           RagProperties ragProperties,
-                           @Value("${spring.ai.ollama.chat.options.model}") String chatModel,
-                           @Value("${spring.ai.ollama.chat.options.temperature}") double temperature) {
+                           RagProperties ragProperties) {
         this.promptFactory = promptFactory;
         this.chatClient = chatClientBuilder.defaultSystem(promptFactory.systemPrompt()).build();
         this.ragRetriever = ragRetriever;
@@ -97,8 +93,6 @@ public class QuestionService {
         this.conceptExtractor = conceptExtractor;
         this.chunkReadPort = chunkReadPort;
         this.generationConfig = ragProperties.generation();
-        this.chatModel = chatModel;
-        this.temperature = temperature;
     }
 
     public AnswerResult answer(AnswerQuestionCommand request) {
@@ -199,8 +193,8 @@ public class QuestionService {
      */
     private ChatOptions chatOptions() {
         return ChatOptions.builder()
-                .model(chatModel)
-                .temperature(temperature)
+                .model(generationConfig.model())
+                .temperature(generationConfig.temperature())
                 .maxTokens(generationConfig.maxOutputTokens())
                 .build();
     }

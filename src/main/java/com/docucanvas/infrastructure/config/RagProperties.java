@@ -82,6 +82,12 @@ public record RagProperties(
      * Gemini, por ejemplo, los throughputs medidos para llama3.2 en CPU dejan de
      * aplicar por completo.
      *
+     * @param model                  identificador del modelo de chat. Vive aquí, y no
+     *                               en {@code spring.ai.ollama.*}, para que el servicio
+     *                               no lea propiedades de un proveedor concreto: al
+     *                               activar el perfil {@code gemini} basta con
+     *                               sobreescribir este valor
+     * @param temperature            temperatura de muestreo
      * @param maxOutputTokens        tope de tokens de la respuesta
      * @param charsPerToken          ratio caracteres/token calibrado para español
      * @param prefillTokensPerSecond throughput de procesado del prompt de entrada
@@ -91,6 +97,8 @@ public record RagProperties(
      * @param maxTimeoutSeconds      techo del timeout dinámico
      */
     public record Generation(
+            @DefaultValue("llama3.2") String model,
+            @DefaultValue("0.7") double temperature,
             @DefaultValue("400") int maxOutputTokens,
             @DefaultValue("3.7") double charsPerToken,
             @DefaultValue("25.0") double prefillTokensPerSecond,

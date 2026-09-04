@@ -171,6 +171,48 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<!--
+	  Proveedores de IA opcionales, activados por perfil.
+
+	  Por qué perfiles y no dependencias fijas: con dos starters de chat en el
+	  classpath a la vez, Spring AI necesita que se desempate con
+	  spring.ai.model.chat, y una configuración incompleta rompe el arranque.
+	  Manteniéndolos fuera del build por defecto, el proyecto sigue arrancando
+	  sin ninguna credencial externa y quien quiera Gemini o generación de
+	  imágenes lo pide explícitamente.
+
+	  El código de negocio no cambia al activarlos: QuestionService usa
+	  ChatOptions portable y el render visual usa ImageModel, ambos agnósticos
+	  del proveedor.
+
+	    ./mvnw spring-boot:run -Pgemini   -Dspring-boot.run.profiles=dev,gemini
+	    ./mvnw spring-boot:run -Pimagegen -Dspring-boot.run.profiles=dev,imagegen
+	-->
+	<profiles>
+		<profile>
+			<id>gemini</id>
+			<dependencies>
+				<dependency>
+					<groupId>org.springframework.ai</groupId>
+					<artifactId>spring-ai-starter-model-vertex-ai-gemini</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<profile>
+			<!-- Aporta un bean ImageModel (DALL·E). Spring AI 1.0.0 GA no incluye
+			     todavía un ImageModel para Imagen de Vertex AI; cuando lo incluya,
+			     basta cambiar este starter: SpringAiImageModelAdapter no se toca. -->
+			<id>imagegen</id>
+			<dependencies>
+				<dependency>
+					<groupId>org.springframework.ai</groupId>
+					<artifactId>spring-ai-starter-model-openai</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+	</profiles>
+
 	<build>
 		<plugins>
 			<plugin>

@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Perfil Gemini: sustituye Ollama local por Vertex AI Gemini como modelo de chat.
+#
+# Requiere compilar con el perfil Maven que aporta el starter:
+#   ./mvnw spring-boot:run -Pgemini -Dspring-boot.run.profiles=dev,gemini
+#
+# NO se incluye ninguna credencial en el repositorio. Antes de usarlo hay que
+# definir en el entorno:
+#
+#   GOOGLE_CLOUD_PROJECT      id del proyecto de Google Cloud
+#   GOOGLE_CLOUD_LOCATION     region, p.ej. us-central1
+#   GOOGLE_APPLICATION_CREDENTIALS   ruta al JSON de la service account
+#                                    (o autenticarse con: gcloud auth application-default login)
+#
+# Nota importante: el modelo de EMBEDDINGS sigue siendo Ollama a propósito.
+# Cambiarlo invalidaría todos los vectores ya indexados -- un embedding de
+# nomic-embed-text (768 dimensiones) y uno de Vertex AI no viven en el mismo
+# espacio vectorial y no son comparables entre sí. Migrar de modelo de
+# embeddings obliga a reindexar el corpus entero y a cambiar la dimensión de la
+# columna en PGVector.
+# ─────────────────────────────────────────────────────────────────────────────
+spring:
+  ai:
+    model:
+      chat: vertexai        # desempata entre los starters de chat presentes
+      embedding: ollama     # los vectores existentes son de nomic-embed-text
+
+    vertex:
+      ai:
+        gemini:
+          project-id: ${GOOGLE_CLOUD_PROJECT}
+          location: ${GOOGLE_CLOUD_LOCATION:us-central1}
+
+docucanvas:
+  rag:
+    generation:
+      model: ${GEMINI_CHAT_MODEL:gemini-2.0-flash}
+      # Gemini no corre en la CPU local: los throughputs medidos para llama3.2
+      # no aplican. Con latencia de red y un modelo mucho más rápido, el timeout
+      # dinámico puede ser bastante más ajustado.
+      prefill-tokens-per-second: 2000.0
+      output-tokens-per-second: 60.0
+      min-timeout-seconds: 20
+      max-timeout-seconds: 60
+
+logging:
+  level:
+    org.springframework.ai: INFO

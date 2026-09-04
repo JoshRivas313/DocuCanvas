@@ -58,7 +58,7 @@ class QuestionServiceTest {
         return new RagProperties(
                 new RagProperties.Chunking(200, 50, 5, 10000, true),
                 new RagProperties.Retrieval(5, 20, 0.3, 0.0),
-                new RagProperties.Generation(400, 3.7, 25.0, 5.0, 15, 30, 150),
+                new RagProperties.Generation("llama3.2", 0.7, 400, 3.7, 25.0, 5.0, 15, 30, 150),
                 new RagProperties.Visual(1024, 1024));
     }
 
@@ -77,8 +77,7 @@ class QuestionServiceTest {
                 new StructuredInsightGenerator(),
                 new VisualRenderingService(java.util.Optional.empty(), diagramRenderPort),
                 conceptExtractor, chunkReadPort,
-                ragProperties,
-                "llama3.2", 0.7);
+                ragProperties);
 
         // Por defecto hay chunks indexados, salvo que un test lo sobreescriba.
         lenient().when(chunkReadPort.countAll()).thenReturn(100);
