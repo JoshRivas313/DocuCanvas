@@ -4,6 +4,9 @@ import com.docucanvas.application.port.out.ChunkReadPort;
 import com.docucanvas.application.question.AnswerQuestionCommand;
 import com.docucanvas.application.question.AnswerResult;
 import com.docucanvas.application.question.ConfidenceLevel;
+import com.docucanvas.application.rag.RagPromptFactory;
+import com.docucanvas.application.rag.RagRetriever;
+import com.docucanvas.infrastructure.config.RagProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,7 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.ollama.api.OllamaOptions;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 
@@ -47,6 +50,14 @@ class QuestionServiceTest {
 
     private final ConceptExtractor conceptExtractor = new ConceptExtractor();
 
+    /** Configuración con los mismos valores por defecto que declara RagProperties. */
+    static RagProperties defaultRagProperties() {
+        return new RagProperties(
+                new RagProperties.Chunking(200, 50, 5, 10000, true),
+                new RagProperties.Retrieval(5, 20, 0.3, 0.0),
+                new RagProperties.Generation(400, 3.7, 25.0, 5.0, 15, 30, 150));
+    }
+
     private QuestionService questionService;
 
     @BeforeEach
@@ -54,8 +65,13 @@ class QuestionServiceTest {
         lenient().when(chatClientBuilder.defaultSystem(any(String.class))).thenReturn(chatClientBuilder);
         lenient().when(chatClientBuilder.build()).thenReturn(chatClient);
 
+        RagProperties ragProperties = defaultRagProperties();
         questionService = new QuestionService(
-                chatClientBuilder, vectorStore, imageGenerationService, conceptExtractor, chunkReadPort,
+                chatClientBuilder,
+                new RagRetriever(vectorStore, ragProperties),
+                new RagPromptFactory(),
+                imageGenerationService, conceptExtractor, chunkReadPort,
+                ragProperties,
                 "llama3.2", 0.7);
 
         // Por defecto hay chunks indexados, salvo que un test lo sobreescriba.
@@ -242,8 +258,8 @@ class QuestionServiceTest {
     }
 
     @Test
-    @DisplayName("Cada llamada al LLM fija num_predict para acotar la longitud de salida")
-    void fijaNumPredictEnCadaLlamada() {
+    @DisplayName("Cada llamada al LLM fija maxTokens para acotar la longitud de salida")
+    void fijaMaxTokensEnCadaLlamada() {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
                 docWithScore("contexto", "doc-1", 0.4)));
         stubChatResponse("Respuesta.");
@@ -251,8 +267,61 @@ class QuestionServiceTest {
 
         questionService.answer(new AnswerQuestionCommand("pregunta", 5, null));
 
-        ArgumentCaptor<OllamaOptions> optionsCaptor = ArgumentCaptor.forClass(OllamaOptions.class);
+        ArgumentCaptor<ChatOptions> optionsCaptor = ArgumentCaptor.forClass(ChatOptions.class);
         verify(requestSpec).options(optionsCaptor.capture());
-        assertThat(optionsCaptor.getValue().getNumPredict()).isNotNull().isPositive();
+        assertThat(optionsCaptor.getValue().getMaxTokens()).isNotNull().isPositive();
+    }
+
+    @Test
+    @DisplayName("Las opciones enviadas son portables (ChatOptions), no específicas de Ollama")
+    void usaOpcionesPortablesNoEspecificasDelProveedor() {
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
+                docWithScore("contexto", "doc-1", 0.4)));
+        stubChatResponse("Respuesta.");
+        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+
+        questionService.answer(new AnswerQuestionCommand("pregunta", 5, null));
+
+        ArgumentCaptor<ChatOptions> optionsCaptor = ArgumentCaptor.forClass(ChatOptions.class);
+        verify(requestSpec).options(optionsCaptor.capture());
+        ChatOptions options = optionsCaptor.getValue();
+        // Es lo que permite cambiar Ollama -> Gemini sin tocar esta clase.
+        assertThat(options).isNotInstanceOf(org.springframework.ai.ollama.api.OllamaOptions.class);
+        assertThat(options.getModel()).isEqualTo("llama3.2");
+        assertThat(options.getTemperature()).isEqualTo(0.7);
+    }
+
+    @Test
+    @DisplayName("topK por encima del máximo configurado se recorta en vez de llegar al VectorStore")
+    void topKExcesivoSeRecortaAlMaximoConfigurado() {
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
+                docWithScore("contexto", "doc-1", 0.4)));
+        stubChatResponse("Respuesta.");
+        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+
+        questionService.answer(new AnswerQuestionCommand("pregunta", 5000, null));
+
+        ArgumentCaptor<SearchRequest> searchCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(vectorStore).similaritySearch(searchCaptor.capture());
+        assertThat(searchCaptor.getValue().getTopK()).isEqualTo(20); // max-top-k configurado
+    }
+
+    @Test
+    @DisplayName("Si el umbral estricto no devuelve nada se reintenta relajado y se declara en los insights")
+    void reintentaConUmbralRelajadoYLoDeclara() {
+        // Primera búsqueda (umbral 0.3) vacía; segunda (0.0) devuelve evidencia débil.
+        when(vectorStore.similaritySearch(any(SearchRequest.class)))
+                .thenReturn(List.of())
+                .thenReturn(List.of(docWithScore("contexto tangencial", "doc-1", 0.8)));
+        stubChatResponse("Respuesta con evidencia débil.");
+        when(imageGenerationService.generateImageDataUrl(any(), any())).thenReturn("");
+
+        AnswerResult response = questionService.answer(
+                new AnswerQuestionCommand("¿De qué trata todo esto?", 5, null));
+
+        verify(vectorStore, times(2)).similaritySearch(any(SearchRequest.class));
+        assertThat(response.citations()).hasSize(1);
+        assertThat(response.insights().howItWasFound())
+                .contains("umbral de similitud habitual");
     }
 }
