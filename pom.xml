@@ -23,6 +23,8 @@
 		<lombok.version>1.18.36</lombok.version>
 		<springdoc.version>2.8.6</springdoc.version>
 		<spring-ai.version>1.0.0</spring-ai.version>
+		<!-- Vacio en el perfil imagegen: ahi si se compila y ejecuta. -->
+		<imagegen.test.excludes>**/RealImageProviderIT.java</imagegen.test.excludes>
 	</properties>
 
 	<!-- Spring AI 1.0.0 es GA: disponible en Maven Central, ya no requiere los
@@ -204,6 +206,10 @@
 			     todavía un ImageModel para Imagen de Vertex AI; cuando lo incluya,
 			     basta cambiar este starter: SpringAiImageModelAdapter no se toca. -->
 			<id>imagegen</id>
+			<properties>
+				<!-- Con el proveedor en el classpath, la prueba real si se compila. -->
+				<imagegen.test.excludes></imagegen.test.excludes>
+			</properties>
 			<dependencies>
 				<dependency>
 					<groupId>org.springframework.ai</groupId>
@@ -232,6 +238,12 @@
 						<arg>-Xlint:all</arg>
 						<arg>-Xlint:-processing</arg>
 					</compilerArgs>
+					<!-- La prueba contra el proveedor real de imagen usa clases que solo
+					     aporta el perfil imagegen. Sin el perfil no debe ni compilarse:
+					     el build por defecto no puede depender de un starter opcional. -->
+					<testExcludes>
+						<testExclude>${imagegen.test.excludes}</testExclude>
+					</testExcludes>
 				</configuration>
 			</plugin>
 			<plugin>

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.image.Image;
 import org.springframework.ai.image.ImageGeneration;
 import org.springframework.ai.image.ImageModel;
+import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -78,6 +79,38 @@ class VisualAdapterWiringTest {
             assertThat(port.generate("un diagrama"))
                     .contains("data:image/png;base64,QUJD");
         });
+    }
+
+    @Test
+    @DisplayName("El ImagePrompt enviado al ImageModel lleva el visualPrompt del LLM y las dimensiones configuradas")
+    void elImagePromptLlevaElVisualPromptYLasOpciones() {
+        runner.withUserConfiguration(CapturingImageModelConfig.class).run(context -> {
+            GenerativeImagePort port = context.getBean(GenerativeImagePort.class);
+            String visualPrompt = "clean vector infographic of a Kafka reconciliation flow, no text";
+
+            port.generate(visualPrompt);
+
+            ImagePrompt captured = CapturingImageModelConfig.lastPrompt;
+            assertThat(captured).isNotNull();
+            // Lo que llega al modelo de imagen es exactamente el prompt que derivo
+            // el LLM del contexto recuperado, no el contexto ni la pregunta.
+            assertThat(captured.getInstructions().get(0).getText()).isEqualTo(visualPrompt);
+            assertThat(captured.getOptions().getWidth()).isEqualTo(1024);
+            assertThat(captured.getOptions().getHeight()).isEqualTo(1024);
+        });
+    }
+
+    /** Captura el ImagePrompt recibido para poder afirmar sobre su contenido. */
+    static class CapturingImageModelConfig {
+        static ImagePrompt lastPrompt;
+
+        @Bean
+        ImageModel imageModel() {
+            return prompt -> {
+                lastPrompt = prompt;
+                return new ImageResponse(List.of(new ImageGeneration(new Image(null, "QUJD"))));
+            };
+        }
     }
 
     /** Simula el bean que aportaría un starter de proveedor (OpenAI, Stability…). */
