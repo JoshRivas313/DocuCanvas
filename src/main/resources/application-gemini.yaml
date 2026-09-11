@@ -64,10 +64,6 @@ docucanvas:
       api-key: ${GEMINI_API_KEY}
       model: ${GEMINI_IMAGE_MODEL:gemini-2.5-flash-image}
 
-logging:
-  level:
-    org.springframework.ai: INFO
-
   # ── Alternativa gratuita para la imagen ──────────────────────────────────
   # Gemini no tiene nivel gratuito de imagen; Workers AI da 10.000 Neurons
   # diarios. Una imagen de 1024x1024 con FLUX-1-schnell cuesta ~57 Neurons:
@@ -84,3 +80,8 @@ logging:
       account-id: ${CLOUDFLARE_ACCOUNT_ID:}
       api-token: ${CLOUDFLARE_API_TOKEN:}
       model: ${CLOUDFLARE_IMAGE_MODEL:@cf/black-forest-labs/flux-1-schnell}
+
+logging:
+  level:
+    org.springframework.ai: INFO
+
