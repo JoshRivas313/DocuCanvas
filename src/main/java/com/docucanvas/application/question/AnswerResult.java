@@ -13,7 +13,7 @@ import java.util.List;
  * cómo la dibuja.
  *
  * @param imageSource  qué mecanismo produjo realmente la imagen
- *                     ({@code GENERATIVE_IMAGE_MODEL}, {@code LOCAL_SVG_FALLBACK}
+ *                     ({@code AI_GENERATED}, {@code LOCAL_SVG_FALLBACK}
  *                     o {@code NONE}); el sistema declara su propio camino en vez
  *                     de dejar que se asuma
  * @param visualPrompt prompt visual derivado por el LLM del contexto recuperado;
@@ -29,6 +29,7 @@ public record AnswerResult(
         String visualPrompt,
         long retrievalTimeMs,
         long generationTimeMs,
-        long imageTimeMs,
+        long imageGenerationTimeMs,
+        long totalTimeMs,
         RetrievalInsights insights
 ) {}

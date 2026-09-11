@@ -173,7 +173,8 @@ function createDocApp() {
                     metrics: {
                         retrieval: data.retrievalTimeMs,
                         generation: data.generationTimeMs,
-                        visual: data.imageTimeMs,
+                        visual: data.imageGenerationTimeMs,
+                        total: data.totalTimeMs,
                     },
                 });
             } catch (e) {

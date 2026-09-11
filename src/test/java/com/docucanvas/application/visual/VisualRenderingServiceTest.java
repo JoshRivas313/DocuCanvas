@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -38,7 +39,7 @@ class VisualRenderingServiceTest {
 
         VisualRendering result = service.render(PROMPT, "¿Qué arquitectura describe?", "contexto");
 
-        assertThat(result.source()).isEqualTo(VisualSource.GENERATIVE_IMAGE_MODEL);
+        assertThat(result.source()).isEqualTo(VisualSource.AI_GENERATED);
         assertThat(result.url()).isEqualTo("https://cdn.example/img.png");
         verifyNoInteractions(diagramRender);
     }
@@ -46,7 +47,7 @@ class VisualRenderingServiceTest {
     @Test
     @DisplayName("Sin proveedor configurado usa el diagrama local y lo declara como respaldo")
     void sinProveedorUsaDiagramaLocal() {
-        when(diagramRender.renderDiagram(anyString(), anyString())).thenReturn(SVG);
+        when(diagramRender.renderDiagram(any(), anyString(), anyString())).thenReturn(SVG);
         VisualRenderingService service = new VisualRenderingService(new NoGenerativeImageProvider(), diagramRender);
 
         VisualRendering result = service.render(PROMPT, "pregunta", "contexto");
@@ -61,7 +62,7 @@ class VisualRenderingServiceTest {
         when(generativeImage.isAvailable()).thenReturn(true);
         when(generativeImage.generate(anyString()))
                 .thenThrow(new RuntimeException("429 Too Many Requests"));
-        when(diagramRender.renderDiagram(anyString(), anyString())).thenReturn(SVG);
+        when(diagramRender.renderDiagram(any(), anyString(), anyString())).thenReturn(SVG);
         VisualRenderingService service = new VisualRenderingService(generativeImage, diagramRender);
 
         VisualRendering result = service.render(PROMPT, "pregunta", "contexto");
@@ -75,7 +76,7 @@ class VisualRenderingServiceTest {
     void respuestaVaciaDelProveedorDegrada() {
         when(generativeImage.isAvailable()).thenReturn(true);
         when(generativeImage.generate(anyString())).thenReturn(Optional.empty());
-        when(diagramRender.renderDiagram(anyString(), anyString())).thenReturn(SVG);
+        when(diagramRender.renderDiagram(any(), anyString(), anyString())).thenReturn(SVG);
         VisualRenderingService service = new VisualRenderingService(generativeImage, diagramRender);
 
         VisualRendering result = service.render(PROMPT, "pregunta", "contexto");
@@ -86,7 +87,7 @@ class VisualRenderingServiceTest {
     @Test
     @DisplayName("Sin prompt visual no se llama al proveedor de pago: se va directo al respaldo")
     void sinPromptVisualNoLlamaAlProveedor() {
-        when(diagramRender.renderDiagram(anyString(), anyString())).thenReturn(SVG);
+        when(diagramRender.renderDiagram(any(), anyString(), anyString())).thenReturn(SVG);
         VisualRenderingService service = new VisualRenderingService(generativeImage, diagramRender);
 
         VisualRendering result = service.render(null, "pregunta", "contexto");
@@ -101,7 +102,7 @@ class VisualRenderingServiceTest {
     void falloTotalDevuelveNone() {
         when(generativeImage.isAvailable()).thenReturn(true);
         when(generativeImage.generate(anyString())).thenThrow(new RuntimeException("sin cuota"));
-        when(diagramRender.renderDiagram(anyString(), anyString()))
+        when(diagramRender.renderDiagram(any(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("fallo de render"));
         VisualRenderingService service = new VisualRenderingService(generativeImage, diagramRender);
 

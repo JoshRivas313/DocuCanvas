@@ -96,7 +96,7 @@ public class QuestionService {
     }
 
     public AnswerResult answer(AnswerQuestionCommand request) {
-        log.info("Iniciando Pipeline RAG para: {}", request.question());
+        log.info("[RAG] Pipeline iniciado para: {}", request.question());
         long start = System.currentTimeMillis();
 
         // ── 0. Alcance de la búsqueda: ¿hay algo indexado? ────────────────
@@ -125,12 +125,20 @@ public class QuestionService {
 
         long promptTokens = estimateTokens(userPrompt);
         long timeoutSeconds = computeDynamicTimeoutSeconds(promptTokens);
-        log.info("Prompt RAG: ~{} tokens estimados ({} chunks) -> timeout dinámico {}s",
-                promptTokens, retrieval.documents().size(), timeoutSeconds);
+        log.info("[RETRIEVAL] {} chunks recuperados (topK={}, umbral relajado={})",
+                retrieval.documents().size(), retrieval.effectiveTopK(), retrieval.usedRelaxedThreshold());
+        log.info("[RAG] Contexto ensamblado: ~{} tokens estimados -> timeout dinamico {}s",
+                promptTokens, timeoutSeconds);
 
         // ── 3. Generación estructurada: texto + prompt visual en una llamada ──
         RagInsight insight = generateInsight(userPrompt, timeoutSeconds, promptTokens);
         long generationEnd = System.currentTimeMillis();
+        log.info("[LLM] Respuesta generada en {} ms", generationEnd - retrievalEnd);
+        if (insight.hasVisualPrompt()) {
+            log.info("[VISUAL PROMPT] {}", insight.visualPrompt());
+        } else {
+            log.warn("[VISUAL PROMPT] El modelo no produjo prompt visual (salida no estructurada)");
+        }
 
         // ── 4. Render visual, anclado a lo que el modelo entendió ─────────
         VisualRendering visual = visualRenderingService.render(
@@ -153,6 +161,7 @@ public class QuestionService {
                 (retrievalEnd - start),
                 (generationEnd - retrievalEnd),
                 (imageEnd - generationEnd),
+                (imageEnd - start),
                 insights);
     }
 
@@ -209,7 +218,7 @@ public class QuestionService {
                 request.question(),
                 "No hay documentos indexados" + (documentFilter != null ? " para este filtro" : " en el sistema")
                         + " con los que responder esta pregunta.",
-                List.of(), 0, "", VisualSource.NONE.name(), null, (now - start), 0, 0,
+                List.of(), 0, "", VisualSource.NONE.name(), null, (now - start), 0, 0, (now - start),
                 new RetrievalInsights(ConfidenceLevel.BAJA, 0.0, List.of(), List.of(), List.of(),
                         0, "No se ejecutó búsqueda semántica: no hay chunks indexados en el alcance solicitado.",
                         false));

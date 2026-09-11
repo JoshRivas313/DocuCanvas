@@ -12,7 +12,7 @@ package com.docucanvas.application.visual;
 public enum VisualSource {
 
     /** Imagen generada por un modelo de difusión vía {@code ImageModel} de Spring AI. */
-    GENERATIVE_IMAGE_MODEL,
+    AI_GENERATED,
 
     /** Diagrama SVG construido localmente a partir de plantillas y del contexto. */
     LOCAL_SVG_FALLBACK,

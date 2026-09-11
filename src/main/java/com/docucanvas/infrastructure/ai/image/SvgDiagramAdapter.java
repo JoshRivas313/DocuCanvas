@@ -8,9 +8,8 @@ import org.springframework.stereotype.Component;
  * Respaldo local: delega en el generador de diagramas SVG por plantillas.
  *
  * <p>Este adaptador es lo que convierte al generador SVG en una pieza
- * arquitectónica honesta. Sigue haciendo exactamente lo mismo que en la versión
- * base — detectar un tema por palabras clave y rellenar una plantilla — pero
- * ahora ocupa el lugar que le corresponde: detrás de un puerto llamado
+ * arquitectónica honesta. Sigue construyendo el diagrama a partir de plantillas,
+ * pero ahora ocupa el lugar que le corresponde: detrás de un puerto llamado
  * {@link DiagramRenderPort}, no detrás de uno que prometa generación por IA.
  *
  * <p>Sus virtudes reales siguen intactas y son las que lo hacen buen respaldo:
@@ -27,7 +26,7 @@ public class SvgDiagramAdapter implements DiagramRenderPort {
     }
 
     @Override
-    public String renderDiagram(String question, String context) {
-        return imageGenerationService.generateImageDataUrl(question, context);
+    public String renderDiagram(String visualPrompt, String question, String context) {
+        return imageGenerationService.generateImageDataUrl(visualPrompt, question, context);
     }
 }

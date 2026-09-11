@@ -15,7 +15,7 @@ public record VisualRendering(String url, VisualSource source) {
     }
 
     public static VisualRendering generated(String url) {
-        return new VisualRendering(url, VisualSource.GENERATIVE_IMAGE_MODEL);
+        return new VisualRendering(url, VisualSource.AI_GENERATED);
     }
 
     public static VisualRendering localSvg(String dataUrl) {

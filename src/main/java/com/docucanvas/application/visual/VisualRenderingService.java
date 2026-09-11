@@ -51,26 +51,41 @@ public class VisualRenderingService {
      * @param context      contexto recuperado, para el respaldo local
      */
     public VisualRendering render(String visualPrompt, String question, String context) {
-        if (visualPrompt != null && !visualPrompt.isBlank() && generativeImage.isAvailable()) {
-            try {
-                Optional<String> url = generativeImage.generate(visualPrompt);
-                if (url.isPresent()) {
-                    return VisualRendering.generated(url.get());
-                }
-                log.warn("El proveedor de imagen no devolvió contenido; se usa el respaldo local");
-            } catch (Exception e) {
-                // Un fallo del proveedor externo no puede tumbar la respuesta:
-                // el usuario ya tiene su texto, la imagen es un extra.
-                log.warn("Fallo generando la imagen con IA ({}); se usa el respaldo local",
-                        e.getMessage());
-            }
+        boolean hasPrompt = visualPrompt != null && !visualPrompt.isBlank();
+
+        if (!hasPrompt) {
+            // Sin prompt no hay nada que generar: gastar una llamada de pago seria
+            // tirar dinero, y el resultado no representaria el documento.
+            log.info("[IMAGE] Sin visualPrompt del modelo -> respaldo local");
+            return renderFallback(null, question, context);
         }
-        return renderFallback(question, context);
+        if (!generativeImage.isAvailable()) {
+            log.info("[IMAGE] Sin proveedor de generacion configurado -> respaldo local "
+                    + "(active el perfil imagegen para generar con IA)");
+            return renderFallback(visualPrompt, question, context);
+        }
+
+        try {
+            log.info("[IMAGE] Llamando a ImageModel ({}) con el prompt visual del LLM",
+                    generativeImage.providerName());
+            Optional<String> url = generativeImage.generate(visualPrompt);
+            if (url.isPresent()) {
+                log.info("[IMAGE] Imagen generada por IA correctamente");
+                return VisualRendering.generated(url.get());
+            }
+            log.warn("[IMAGE] El proveedor no devolvio contenido -> respaldo local");
+        } catch (Exception e) {
+            // Un fallo del proveedor externo no puede tumbar la respuesta:
+            // el usuario ya tiene su texto, la imagen es un extra.
+            log.warn("[IMAGE] Fallo generando la imagen con IA ({}) -> respaldo local",
+                    e.getMessage());
+        }
+        return renderFallback(visualPrompt, question, context);
     }
 
-    private VisualRendering renderFallback(String question, String context) {
+    private VisualRendering renderFallback(String visualPrompt, String question, String context) {
         try {
-            String dataUrl = diagramRender.renderDiagram(question, context);
+            String dataUrl = diagramRender.renderDiagram(visualPrompt, question, context);
             return dataUrl != null && !dataUrl.isBlank()
                     ? VisualRendering.localSvg(dataUrl)
                     : VisualRendering.none();

@@ -6,7 +6,7 @@ import java.util.List;
  * Respuesta del pipeline RAG.
  *
  * @param imageUrl     representación visual del contenido recuperado
- * @param imageSource  mecanismo que produjo la imagen: {@code GENERATIVE_IMAGE_MODEL}
+ * @param imageSource  mecanismo que produjo la imagen: {@code AI_GENERATED}
  *                     si la generó un modelo de IA, {@code LOCAL_SVG_FALLBACK} si es
  *                     el diagrama local, {@code NONE} si no hubo imagen
  * @param visualPrompt prompt que el LLM derivó del contexto y que originó la
@@ -24,6 +24,7 @@ public record QuestionResponse(
     String visualPrompt,
     long retrievalTimeMs,
     long generationTimeMs,
-    long imageTimeMs,
+    long imageGenerationTimeMs,
+    long totalTimeMs,
     RetrievalInsightsDTO insights
 ) {}

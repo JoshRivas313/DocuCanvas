@@ -64,16 +64,28 @@ public class ImageGenerationService {
      * Genera un Data URL SVG a partir de la pregunta y el contexto documental,
      * eligiendo automáticamente la plantilla visual más afín al tema detectado.
      *
-     * @param question pregunta original del usuario
-     * @param context  contexto documental recuperado del VectorStore
+     * @param visualPrompt prompt derivado por el LLM del contexto; fuente preferente
+     *                     para las etiquetas del diagrama
+     * @param question     pregunta original del usuario
+     * @param context      contexto documental recuperado del VectorStore
      * @return Data URL {@code data:image/svg+xml;base64,...} listo para {@code <img src="...">}
      */
-    public String generateImageDataUrl(String question, String context) {
-        List<String> concepts = conceptExtractor.extractKeyConcepts(context, 6);
-        List<String> sentences = conceptExtractor.extractKeySentences(context, 3);
-        Topic topic = detectTopic(context, concepts);
+    public String generateImageDataUrl(String visualPrompt, String question, String context) {
+        // El prompt visual, cuando existe, es la interpretacion que el LLM hizo del
+        // contexto recuperado: es mejor fuente para las etiquetas del diagrama que la
+        // frecuencia de palabras del texto crudo, que no distingue lo relevante de lo
+        // meramente repetido. Solo se cae al contexto si el modelo no lo produjo.
+        boolean hasVisualPrompt = visualPrompt != null && !visualPrompt.isBlank();
+        String conceptSource = hasVisualPrompt ? visualPrompt : context;
 
-        log.info("Generando diagrama SVG ({}) para: {}", topic, question);
+        List<String> concepts = conceptExtractor.extractKeyConcepts(conceptSource, 6);
+        List<String> sentences = hasVisualPrompt
+                ? conceptExtractor.extractKeySentences(visualPrompt, 3)
+                : conceptExtractor.extractKeySentences(context, 3);
+        Topic topic = detectTopic(conceptSource, concepts);
+
+        log.info("[IMAGE] Respaldo local: diagrama SVG tema={} origen={} para: {}",
+                topic, hasVisualPrompt ? "visualPrompt" : "contexto-crudo", question);
 
         String svg = buildDiagram(topic, question, concepts, sentences);
         String base64 = Base64.getEncoder().encodeToString(svg.getBytes(StandardCharsets.UTF_8));

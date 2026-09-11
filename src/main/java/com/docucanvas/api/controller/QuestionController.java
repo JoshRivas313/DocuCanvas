@@ -51,7 +51,8 @@ public class QuestionController {
                 result.visualPrompt(),
                 result.retrievalTimeMs(),
                 result.generationTimeMs(),
-                result.imageTimeMs(),
+                result.imageGenerationTimeMs(),
+                result.totalTimeMs(),
                 toInsightsDto(result.insights()));
     }
 

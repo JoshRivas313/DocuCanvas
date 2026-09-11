@@ -49,7 +49,7 @@ public class IngestionService {
     @Async
     @CacheEvict(value = { "chunksGlobal", "chunksDoc" }, allEntries = true)
     public void processIngestion(UUID documentId, byte[] fileContent, String originalFilename) {
-        log.info("Starting ingestion for document: {}", documentId);
+        log.info("[INGESTION] Documento recibido: {} ({})", originalFilename, documentId);
 
         com.docucanvas.domain.model.Document domainDocument = documentRepository.findById(documentId)
                 .orElseThrow(() -> new DocumentNotFoundException(documentId));
@@ -64,7 +64,7 @@ public class IngestionService {
             // de formatos se trata como una única "página").
             List<String> pages = tikaExtractor.extractPages(
                     fileContent, originalFilename, domainDocument.getSourceType());
-            log.debug("Extraídas {} página(s)", pages.size());
+            log.info("[INGESTION] Texto extraido: {} pagina(s)", pages.size());
 
             // 2. Chunking por página: cada chunk conserva la página de origen
             // en su metadata, necesaria para citar la evidencia con precisión
@@ -85,17 +85,21 @@ public class IngestionService {
                     springAiDocs.add(chunk);
                 }
             }
-            log.debug("Dividido en {} chunks inteligentes", springAiDocs.size());
+            log.info("[CHUNKING] {} chunks generados", springAiDocs.size());
 
             // 3. Ingesta Vectorial (Embedding + Save en un solo paso)
             // Spring AI se encarga de llamar al EmbeddingModel configurado en YAML
+            log.info("[EMBEDDING] Generando embeddings de {} chunks", springAiDocs.size());
+            long embStart = System.currentTimeMillis();
             vectorStore.add(springAiDocs);
+            log.info("[VECTOR STORE] {} chunks persistidos en {} ms",
+                    springAiDocs.size(), System.currentTimeMillis() - embStart);
 
             // 4. Completar Proceso
             domainDocument.markReady(springAiDocs.size());
             documentRepository.save(domainDocument);
 
-            log.info("Ingesta completada exitosamente para: {}", originalFilename);
+            log.info("[INGESTION] Completada: {}", originalFilename);
 
         } catch (Exception e) {
             log.error("Fallo en la ingesta para documento: {}", documentId, e);

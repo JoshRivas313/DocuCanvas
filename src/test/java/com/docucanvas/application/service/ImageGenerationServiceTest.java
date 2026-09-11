@@ -28,7 +28,7 @@ class ImageGenerationServiceTest {
     @Test
     @DisplayName("Contexto sobre blockchain elige la plantilla de cadena de bloques")
     void detectaTemaBlockchain() {
-        String svg = decodedSvg(service.generateImageDataUrl("pregunta",
+        String svg = decodedSvg(service.generateImageDataUrl(null, "pregunta",
                 "El sistema usa blockchain y hash criptográfico para validar cada transacción en la cadena."));
 
         assertThat(svg).contains("CADENA DE BLOQUES");
@@ -37,7 +37,7 @@ class ImageGenerationServiceTest {
     @Test
     @DisplayName("Contexto sobre Kubernetes/cloud elige la plantilla de infraestructura cloud")
     void detectaTemaCloud() {
-        String svg = decodedSvg(service.generateImageDataUrl("pregunta",
+        String svg = decodedSvg(service.generateImageDataUrl(null, "pregunta",
                 "El despliegue usa Kubernetes con varios pods en un cluster sobre AWS, gestionados por contenedores Docker."));
 
         assertThat(svg).contains("INFRAESTRUCTURA CLOUD");
@@ -46,7 +46,7 @@ class ImageGenerationServiceTest {
     @Test
     @DisplayName("Contexto sobre gobierno de TI elige la plantilla de modelo de gobierno")
     void detectaTemaGobiernoTi() {
-        String svg = decodedSvg(service.generateImageDataUrl("pregunta",
+        String svg = decodedSvg(service.generateImageDataUrl(null, "pregunta",
                 "El modelo de Gobierno de TI se basa en COBIT 5, ITIL v4 y CMMI para medir KPI de gobernanza."));
 
         assertThat(svg).contains("MODELO DE GOBIERNO");
@@ -55,7 +55,7 @@ class ImageGenerationServiceTest {
     @Test
     @DisplayName("Contexto sin palabras clave de ningún tema cae en la plantilla genérica")
     void sinTemaDetectadoUsaGenerica() {
-        String svg = decodedSvg(service.generateImageDataUrl("pregunta",
+        String svg = decodedSvg(service.generateImageDataUrl(null, "pregunta",
                 "Texto neutro sobre jardinería, plantas y riego semanal en primavera."));
 
         assertThat(svg).contains("CONCEPTOS CLAVE").doesNotContain("CADENA DE BLOQUES", "INFRAESTRUCTURA CLOUD");
@@ -64,7 +64,7 @@ class ImageGenerationServiceTest {
     @Test
     @DisplayName("El SVG generado siempre es un documento bien formado con la pregunta en el header")
     void svgBienFormadoConPregunta() {
-        String svg = decodedSvg(service.generateImageDataUrl("¿Qué trata el documento?", "contenido cualquiera"));
+        String svg = decodedSvg(service.generateImageDataUrl(null, "¿Qué trata el documento?", "contenido cualquiera"));
 
         assertThat(svg).startsWith("<svg").endsWith("</svg>");
         assertThat(svg).contains("¿Qué trata el documento?");
