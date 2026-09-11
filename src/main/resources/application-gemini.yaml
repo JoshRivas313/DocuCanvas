@@ -39,12 +39,12 @@ spring:
         # Sin esto, el cliente pediría /v1/chat/completions y Google devolvería 404.
         completions-path: /v1beta/openai/chat/completions
         options:
-          model: ${GEMINI_CHAT_MODEL:gemini-2.0-flash}
+          model: ${GEMINI_CHAT_MODEL:gemini-3.1-flash-lite}
 
 docucanvas:
   rag:
     generation:
-      model: ${GEMINI_CHAT_MODEL:gemini-2.0-flash}
+      model: ${GEMINI_CHAT_MODEL:gemini-3.1-flash-lite}
       # Gemini no corre en la CPU local: los throughputs medidos para llama3.2
       # no aplican. Con un modelo remoto y rápido el timeout puede ser ajustado.
       prefill-tokens-per-second: 2000.0
@@ -58,7 +58,7 @@ docucanvas:
     image:
       enabled: true
       api-key: ${GEMINI_API_KEY}
-      model: ${GEMINI_IMAGE_MODEL:imagen-3.0-generate-002}
+      model: ${GEMINI_IMAGE_MODEL:gemini-2.5-flash-image}
 
 logging:
   level:

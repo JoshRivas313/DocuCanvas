@@ -28,7 +28,7 @@ class GeminiImageModelTest {
     private static final String PROMPT = "clean vector infographic of a Kafka flow, no text";
 
     private GeminiImageProperties props() {
-        return new GeminiImageProperties(true, "clave-de-prueba", "imagen-3.0-generate-002", 90);
+        return new GeminiImageProperties(true, "clave-de-prueba", "gemini-2.5-flash-image", 90);
     }
 
     @Test
@@ -38,16 +38,18 @@ class GeminiImageModelTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
 
         server.expect(requestTo(
-                        "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict"))
+                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent"))
                 .andExpect(method(org.springframework.http.HttpMethod.POST))
                 // La clave NO debe viajar como query param: acabaria en logs de acceso.
                 .andExpect(header("x-goog-api-key", "clave-de-prueba"))
                 .andExpect(header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE))
-                .andExpect(jsonPath("$.instances[0].prompt").value(PROMPT))
-                .andExpect(jsonPath("$.parameters.sampleCount").value(1))
-                .andExpect(jsonPath("$.parameters.aspectRatio").value("1:1"))
+                .andExpect(jsonPath("$.contents[0].parts[0].text").value(PROMPT))
+                // Sin responseModalities IMAGE el modelo contesta texto, no una imagen.
+                .andExpect(jsonPath("$.generationConfig.responseModalities[0]").value("IMAGE"))
+                .andExpect(jsonPath("$.generationConfig.imageConfig.aspectRatio").value("1:1"))
                 .andRespond(withSuccess(
-                        "{\"predictions\":[{\"bytesBase64Encoded\":\"QUJD\",\"mimeType\":\"image/png\"}]}",
+                        "{\"candidates\":[{\"content\":{\"parts\":[{\"inlineData\":"
+                                + "{\"mimeType\":\"image/png\",\"data\":\"QUJD\"}}]}}]}",
                         MediaType.APPLICATION_JSON));
 
         GeminiImageModel model = new GeminiImageModel(props(), builder);
@@ -65,9 +67,9 @@ class GeminiImageModelTest {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
 
-        server.expect(jsonPath("$.parameters.aspectRatio").value("16:9"))
-                .andRespond(withSuccess("{\"predictions\":[{\"bytesBase64Encoded\":\"WA==\"}]}",
-                        MediaType.APPLICATION_JSON));
+        server.expect(jsonPath("$.generationConfig.imageConfig.aspectRatio").value("16:9"))
+                .andRespond(withSuccess("{\"candidates\":[{\"content\":{\"parts\":[{\"inlineData\":"
+                        + "{\"data\":\"WA==\"}}]}}]}", MediaType.APPLICATION_JSON));
 
         new GeminiImageModel(props(), builder).call(new ImagePrompt(PROMPT,
                 ImageOptionsBuilder.builder().width(1920).height(1080).build()));
@@ -80,8 +82,8 @@ class GeminiImageModelTest {
     void respuestaSinImagenesDevuelveVacio() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo(org.hamcrest.Matchers.containsString(":predict")))
-                .andRespond(withSuccess("{\"predictions\":[]}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(org.hamcrest.Matchers.containsString(":generateContent")))
+                .andRespond(withSuccess("{\"candidates\":[]}", MediaType.APPLICATION_JSON));
 
         ImageResponse response = new GeminiImageModel(props(), builder)
                 .call(new ImagePrompt(PROMPT, ImageOptionsBuilder.builder().build()));

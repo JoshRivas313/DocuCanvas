@@ -16,6 +16,6 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record GeminiImageProperties(
         @DefaultValue("false") boolean enabled,
         String apiKey,
-        @DefaultValue("imagen-3.0-generate-002") String model,
+        @DefaultValue("gemini-2.5-flash-image") String model,
         @DefaultValue("90") int timeoutSeconds) {
 }

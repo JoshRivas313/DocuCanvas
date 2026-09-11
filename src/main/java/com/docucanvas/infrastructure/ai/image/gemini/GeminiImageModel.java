@@ -58,7 +58,7 @@ public class GeminiImageModel implements ImageModel {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> response = restClient.post()
-                .uri("/v1beta/models/{model}:predict", config.model())
+                .uri("/v1beta/models/{model}:generateContent", config.model())
                 // La clave viaja en cabecera, no como query param: en la URL
                 // acabaria en logs de acceso, trazas y cabeceras Referer.
                 .header("x-goog-api-key", config.apiKey())
@@ -70,17 +70,27 @@ public class GeminiImageModel implements ImageModel {
         return toImageResponse(response);
     }
 
+    /**
+     * Cuerpo para {@code :generateContent}.
+     *
+     * <p>Los modelos de imagen de la Developer API <b>no exponen</b>
+     * {@code :predict}: consultando {@code /v1beta/models} con una clave real, los
+     * unicos modelos con ese metodo son los de video (Veo, {@code predictLongRunning}).
+     * La generacion de imagen se pide como una conversacion normal cuya respuesta
+     * se fuerza a la modalidad IMAGE.
+     */
     private Map<String, Object> buildRequestBody(String prompt, ImageOptions options) {
-        Map<String, Object> parameters = new LinkedHashMap<>();
-        parameters.put("sampleCount", 1);
-        // Imagen no acepta ancho y alto arbitrarios: trabaja con proporciones.
-        // Se deriva la más cercana a lo pedido en vez de enviar valores que la
-        // API rechazaría.
-        parameters.put("aspectRatio", aspectRatioFrom(options));
+        Map<String, Object> generationConfig = new LinkedHashMap<>();
+        generationConfig.put("responseModalities", List.of("IMAGE"));
+
+        // El modelo no acepta ancho y alto arbitrarios: trabaja con proporciones.
+        // Se deriva la mas cercana a lo pedido en vez de enviar valores que
+        // rechazaria.
+        generationConfig.put("imageConfig", Map.of("aspectRatio", aspectRatioFrom(options)));
 
         return Map.of(
-                "instances", List.of(Map.of("prompt", prompt)),
-                "parameters", parameters);
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", generationConfig);
     }
 
     private String aspectRatioFrom(ImageOptions options) {
@@ -100,13 +110,20 @@ public class GeminiImageModel implements ImageModel {
         if (response == null) {
             return new ImageResponse(generations);
         }
-        if (response.get("predictions") instanceof List<?> predictions) {
-            for (Object prediction : predictions) {
-                if (prediction instanceof Map<?, ?> map
-                        && map.get("bytesBase64Encoded") instanceof String b64
-                        && !b64.isBlank()) {
-                    // La Developer API devuelve base64, nunca una URL.
-                    generations.add(new ImageGeneration(new Image(null, b64)));
+        // La respuesta llega como partes de un candidato: la imagen viaja en
+        // inlineData.data, en base64, nunca como URL.
+        if (response.get("candidates") instanceof List<?> candidates) {
+            for (Object candidate : candidates) {
+                if (!(candidate instanceof Map<?, ?> c)) continue;
+                if (!(c.get("content") instanceof Map<?, ?> content)) continue;
+                if (!(content.get("parts") instanceof List<?> parts)) continue;
+                for (Object part : parts) {
+                    if (part instanceof Map<?, ?> pm
+                            && pm.get("inlineData") instanceof Map<?, ?> inline
+                            && inline.get("data") instanceof String b64
+                            && !b64.isBlank()) {
+                        generations.add(new ImageGeneration(new Image(null, b64)));
+                    }
                 }
             }
         }
