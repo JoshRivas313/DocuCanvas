@@ -116,6 +116,37 @@ la aplicación arranca bien y degrada siempre al SVG. Se corrigió con
 
 ---
 
+## Activar la generación real de imágenes
+
+El flujo multimodal está completo en código. Lo único que falta para que la
+respuesta deje de decir `LOCAL_SVG_FALLBACK` es una credencial:
+
+```bash
+export OPENAI_API_KEY=sk-...
+./mvnw -Pimagegen spring-boot:run -Dspring-boot.run.profiles=dev,imagegen
+```
+
+Con eso, `SpringAiImageModelAdapter` encuentra un bean `ImageModel`,
+`isAvailable()` pasa a `true` y el `visualPrompt` del LLM llega a
+`imageModel.call(...)`. La respuesta pasa a `imageSource: AI_GENERATED`.
+
+Para comprobarlo contra el proveedor de verdad, sin arrancar la aplicación:
+
+```bash
+export OPENAI_API_KEY=sk-...
+./mvnw -Pimagegen test -Dtest=RealImageProviderIT
+```
+
+Sin la variable de entorno ese test se omite en vez de fallar: una prueba que
+necesita una credencial de pago no puede romper el build de quien no la tiene.
+
+**Gemini no aporta generación de imágenes.** En Spring AI 1.0.0 GA,
+`spring-ai-starter-model-vertex-ai-gemini` solo trae un `ChatModel` — su pom no
+menciona `image` en ningún sitio — y `spring-ai-starter-model-google-genai` no
+existe todavía en la versión GA. Son dos credenciales distintas para dos cosas
+distintas: Gemini mejora la latencia del texto, el proveedor de imagen habilita
+el "plot twist".
+
 ## Cómo ejecutarlo
 
 ### Por defecto (sin credenciales externas)
