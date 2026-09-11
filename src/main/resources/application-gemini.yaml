@@ -56,7 +56,11 @@ docucanvas:
   # con la MISMA clave que el chat.
   gemini:
     image:
-      enabled: true
+      # Apagado por defecto: la generacion de imagen NO tiene nivel gratuito
+      # (la API responde 429 con "limit: 0"). Con esto activo, cada consulta
+      # gasta ~850 ms en una llamada condenada a fallar antes de degradar al SVG.
+      # Activalo solo cuando la cuenta tenga facturacion: GEMINI_IMAGE_ENABLED=true
+      enabled: ${GEMINI_IMAGE_ENABLED:false}
       api-key: ${GEMINI_API_KEY}
       model: ${GEMINI_IMAGE_MODEL:gemini-2.5-flash-image}
 
