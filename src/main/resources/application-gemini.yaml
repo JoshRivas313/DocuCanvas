@@ -1,47 +1,64 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Perfil Gemini: sustituye Ollama local por Vertex AI Gemini como modelo de chat.
+# Perfil Gemini — Gemini Developer API (Google AI Studio) con API Key.
 #
-# Requiere compilar con el perfil Maven que aporta el starter:
-#   ./mvnw spring-boot:run -Pgemini -Dspring-boot.run.profiles=dev,gemini
+#   ./mvnw -Pgemini spring-boot:run -Dspring-boot.run.profiles=dev,gemini
 #
-# NO se incluye ninguna credencial en el repositorio. Antes de usarlo hay que
-# definir en el entorno:
+# Credencial (NUNCA en el repositorio):
+#   GEMINI_API_KEY   clave creada en https://aistudio.google.com/api-keys
 #
-#   GOOGLE_CLOUD_PROJECT      id del proyecto de Google Cloud
-#   GOOGLE_CLOUD_LOCATION     region, p.ej. us-central1
-#   GOOGLE_APPLICATION_CREDENTIALS   ruta al JSON de la service account
-#                                    (o autenticarse con: gcloud auth application-default login)
+# ── Por qué la configuración habla de "openai" para llamar a Gemini ──────────
 #
-# Nota importante: el modelo de EMBEDDINGS sigue siendo Ollama a propósito.
-# Cambiarlo invalidaría todos los vectores ya indexados -- un embedding de
-# nomic-embed-text (768 dimensiones) y uno de Vertex AI no viven en el mismo
-# espacio vectorial y no son comparables entre sí. Migrar de modelo de
-# embeddings obliga a reindexar el corpus entero y a cambiar la dimensión de la
-# columna en PGVector.
+# Spring AI 1.0.0 GA no tiene módulo para la Gemini Developer API: el starter
+# spring-ai-starter-model-google-genai aparece en 1.1.0, que arrastra Spring
+# Boot 3.5. Su único módulo de Google en 1.0.0 es Vertex AI, que se autentica
+# con service account, no con API Key.
+#
+# Pero Google publica una capa compatible con OpenAI sobre la Gemini Developer
+# API, y el cliente de OpenAI de Spring AI 1.0.0 permite reescribir la URL base
+# y la ruta de completions. Es decir: se usa el *transporte* de OpenAI para
+# hablar con *Gemini*. El modelo que responde es Gemini, la clave es la de AI
+# Studio y no interviene ningún servicio de OpenAI.
+#
+# Verificado contra el endpoint real:
+#   POST .../v1beta/openai/chat/completions  -> 400 "Missing Authorization"  (existe)
+#   POST .../v1beta/openai/images/generations -> 404 "entity was not found"  (no existe)
+# Por eso el chat va por esta vía y las imágenes por el endpoint nativo
+# (ver docucanvas.gemini.image y GeminiImageModel).
 # ─────────────────────────────────────────────────────────────────────────────
 spring:
   ai:
     model:
-      chat: vertexai        # desempata entre los starters de chat presentes
-      embedding: ollama     # los vectores existentes son de nomic-embed-text
+      chat: openai          # transporte OpenAI-compatible apuntando a Gemini
+      embedding: ollama     # los vectores indexados son de nomic-embed-text
+      image: none           # el ImageModel lo aporta GeminiImageModel, no OpenAI
 
-    vertex:
-      ai:
-        gemini:
-          project-id: ${GOOGLE_CLOUD_PROJECT}
-          location: ${GOOGLE_CLOUD_LOCATION:us-central1}
+    openai:
+      api-key: ${GEMINI_API_KEY}
+      base-url: https://generativelanguage.googleapis.com
+      chat:
+        # Sin esto, el cliente pediría /v1/chat/completions y Google devolvería 404.
+        completions-path: /v1beta/openai/chat/completions
+        options:
+          model: ${GEMINI_CHAT_MODEL:gemini-2.0-flash}
 
 docucanvas:
   rag:
     generation:
       model: ${GEMINI_CHAT_MODEL:gemini-2.0-flash}
       # Gemini no corre en la CPU local: los throughputs medidos para llama3.2
-      # no aplican. Con latencia de red y un modelo mucho más rápido, el timeout
-      # dinámico puede ser bastante más ajustado.
+      # no aplican. Con un modelo remoto y rápido el timeout puede ser ajustado.
       prefill-tokens-per-second: 2000.0
       output-tokens-per-second: 60.0
       min-timeout-seconds: 20
       max-timeout-seconds: 60
+
+  # Generación de imágenes por el endpoint nativo de la Developer API,
+  # con la MISMA clave que el chat.
+  gemini:
+    image:
+      enabled: true
+      api-key: ${GEMINI_API_KEY}
+      model: ${GEMINI_IMAGE_MODEL:imagen-3.0-generate-002}
 
 logging:
   level:

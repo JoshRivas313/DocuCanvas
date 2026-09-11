@@ -194,9 +194,18 @@
 		<profile>
 			<id>gemini</id>
 			<dependencies>
+				<!--
+				  Transporte, no proveedor. Spring AI 1.0.0 no tiene modulo para la
+				  Gemini Developer API (llega en 1.1.0, que exige Spring Boot 3.5), y
+				  su unico modulo de Google, Vertex AI, exige service account en vez
+				  de API Key. Google publica una capa compatible con OpenAI sobre la
+				  Developer API, asi que se usa este cliente reapuntado por
+				  base-url + completions-path. Quien responde es Gemini; ningun
+				  servicio de OpenAI interviene. Ver application-gemini.yaml.
+				-->
 				<dependency>
 					<groupId>org.springframework.ai</groupId>
-					<artifactId>spring-ai-starter-model-vertex-ai-gemini</artifactId>
+					<artifactId>spring-ai-starter-model-openai</artifactId>
 				</dependency>
 			</dependencies>
 		</profile>
