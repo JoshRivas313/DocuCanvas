@@ -22,7 +22,7 @@ class CloudflareImageModelTest {
 
     private CloudflareImageProperties props() {
         return new CloudflareImageProperties(
-                true, "cuenta-de-prueba", "token-de-prueba", "@cf/black-forest-labs/flux-1-schnell", 4);
+                true, "cuenta-de-prueba", "token-de-prueba", "@cf/black-forest-labs/flux-1-schnell", 4, 60);
     }
 
     @Test

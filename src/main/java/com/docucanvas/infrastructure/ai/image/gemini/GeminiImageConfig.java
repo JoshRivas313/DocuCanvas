@@ -7,7 +7,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+
+import java.time.Duration;
 
 /**
  * Registra el {@link ImageModel} de Gemini cuando el perfil lo activa.
@@ -37,6 +40,25 @@ public class GeminiImageConfig {
                             + "imagenes activa. Define GEMINI_API_KEY.");
         }
         log.info("[IMAGE] Gemini Developer API activa para imagenes: modelo={}", properties.model());
-        return new GeminiImageModel(properties, restClientBuilder);
+        return new GeminiImageModel(properties,
+                restClientBuilder.requestFactory(timeoutFactory(properties.timeoutSeconds())));
     }
+
+    /**
+     * Sin timeout explícito, una llamada colgada al proveedor bloquea el hilo de
+     * la petición HTTP indefinidamente: el render visual no está cubierto por el
+     * future con timeout que sí protege la generación de texto.
+     *
+     * <p>Se configura aquí y no dentro del modelo a propósito. El timeout es una
+     * preocupación de transporte, no del modelo; y fijar el {@code requestFactory}
+     * dentro de la clase sobrescribiría el de {@code MockRestServiceServer},
+     * dejando que los tests unitarios salieran a la red real.
+     */
+    private static SimpleClientHttpRequestFactory timeoutFactory(int timeoutSeconds) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(10));
+        factory.setReadTimeout(Duration.ofSeconds(timeoutSeconds));
+        return factory;
+    }
+
 }

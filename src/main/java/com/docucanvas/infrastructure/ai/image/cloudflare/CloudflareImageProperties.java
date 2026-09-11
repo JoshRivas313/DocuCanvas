@@ -18,6 +18,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param apiToken  token de API con permiso de Workers AI
  * @param model     modelo de Workers AI
  * @param steps     pasos de difusion (FLUX schnell admite hasta 8; 4 es su valor por defecto)
+ * @param timeoutSeconds cota de espera de la llamada; sin ella una respuesta
+ *                       colgada bloquea el hilo de la peticion HTTP
  */
 @ConfigurationProperties(prefix = "docucanvas.cloudflare.image")
 public record CloudflareImageProperties(
@@ -25,5 +27,6 @@ public record CloudflareImageProperties(
         String accountId,
         String apiToken,
         @DefaultValue("@cf/black-forest-labs/flux-1-schnell") String model,
-        @DefaultValue("4") int steps) {
+        @DefaultValue("4") int steps,
+        @DefaultValue("60") int timeoutSeconds) {
 }
