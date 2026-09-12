@@ -87,6 +87,18 @@ public class IngestionService {
             }
             log.info("[CHUNKING] {} chunks generados", springAiDocs.size());
 
+            // Cero chunks = no hay nada que indexar, y marcarlo READY seria
+            // mentir: el documento aparece "listo" en la lista y luego ninguna
+            // pregunta encuentra nada. El caso tipico es un PDF escaneado, sin
+            // capa de texto, del que PDFBox no extrae ni un caracter.
+            if (springAiDocs.isEmpty()) {
+                log.warn("[INGESTION] '{}' no produjo ningun chunk: el archivo no tiene texto "
+                        + "extraible (¿PDF escaneado sin OCR?). Se marca FAILED.", originalFilename);
+                domainDocument.markFailed();
+                documentRepository.save(domainDocument);
+                return;
+            }
+
             // 3. Ingesta Vectorial (Embedding + Save en un solo paso)
             // Spring AI se encarga de llamar al EmbeddingModel configurado en YAML
             log.info("[EMBEDDING] Generando embeddings de {} chunks", springAiDocs.size());
